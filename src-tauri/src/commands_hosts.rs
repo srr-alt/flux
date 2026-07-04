@@ -333,6 +333,28 @@ pub async fn list_remote_processes(
     .map_err(|e| e.to_string())?
 }
 
+/// Drop a recorded host key so a legitimately reinstalled machine can be
+/// re-trusted. The file only ever contains entries Flux itself wrote.
+#[tauri::command]
+pub fn forget_host_key(app: AppHandle, address: String, port: u16) -> Result<(), String> {
+    let path = known_hosts_path(&app);
+    let Ok(contents) = std::fs::read_to_string(&path) else {
+        return Ok(());
+    };
+    let needle_plain = address.as_str();
+    let needle_bracketed = format!("[{address}]:{port}");
+    let kept: Vec<&str> = contents
+        .lines()
+        .filter(|line| {
+            let host_field = line.split_whitespace().next().unwrap_or("");
+            !host_field
+                .split(',')
+                .any(|h| h == needle_plain || h == needle_bracketed)
+        })
+        .collect();
+    std::fs::write(&path, kept.join("\n") + "\n").map_err(|e| e.to_string())
+}
+
 fn config_for(state: &AppState, host_id: &str) -> Result<HostConfig, String> {
     state
         .hosts

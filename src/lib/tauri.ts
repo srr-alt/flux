@@ -224,6 +224,11 @@ export function installFluxDeb(
   return invoke("install_flux_deb", { hostId, sudoPassword });
 }
 
+/** Drop a stored host key (machine legitimately reinstalled/recreated). */
+export function forgetHostKey(address: string, port: number): Promise<void> {
+  return invoke("forget_host_key", { address, port });
+}
+
 export function onDeployProgress(
   callback: (progress: import("../types/hosts").DeployProgress) => void,
 ): Promise<UnlistenFn> {

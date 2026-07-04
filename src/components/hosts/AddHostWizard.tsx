@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { addHost, listHosts, testHostConnection } from "../../lib/tauri";
+import { addHost, forgetHostKey, listHosts, testHostConnection } from "../../lib/tauri";
 import { useHostsStore } from "../../state/hostsStore";
 import type { TestResult } from "../../types/hosts";
 
@@ -23,6 +23,7 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [test, setTest] = useState<TestResult | null>(null);
+  const [keyChanged, setKeyChanged] = useState(false);
 
   const runTest = async () => {
     setBusy(true);
@@ -36,8 +37,9 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
       );
       setTest(result);
       if (result.host_key_changed) {
+        setKeyChanged(true);
         setError(
-          "HOST KEY CHANGED since last seen — possible man-in-the-middle. Refusing to continue.",
+          "HOST KEY CHANGED since last seen — possible man-in-the-middle. Only continue if you reinstalled or recreated this machine yourself.",
         );
       } else if (!result.auth_ok) {
         setError("Authentication failed — check username/password.");
@@ -149,6 +151,20 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
             </label>
             {error && (
               <p className="text-xs text-status-critical">{error}</p>
+            )}
+            {keyChanged && (
+              <button
+                type="button"
+                className="rounded border border-status-warning/40 bg-status-warning/10 px-3 py-1.5 text-xs text-status-warning hover:bg-status-warning/20"
+                onClick={async () => {
+                  await forgetHostKey(address.trim(), port);
+                  setKeyChanged(false);
+                  setError(null);
+                  runTest();
+                }}
+              >
+                I reinstalled this machine — forget old key & re-verify
+              </button>
             )}
             <button
               type="submit"
