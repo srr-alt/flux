@@ -1,0 +1,209 @@
+export interface CpuSnapshot {
+  global_usage_pct: number;
+  per_core_usage_pct: number[];
+  per_core_freq_mhz: number[];
+  per_core_temp_c: number[] | null;
+  load_avg_1: number;
+  load_avg_5: number;
+  load_avg_15: number;
+  frequency_mhz: number | null;
+  tasks_running: number;
+  tasks_total: number;
+}
+
+export interface CpuDetails {
+  architecture: string | null;
+  vendor: string | null;
+  virtualization: string | null;
+  max_mhz: string | null;
+  min_mhz: string | null;
+  l1d_cache: string | null;
+  l1i_cache: string | null;
+  l2_cache: string | null;
+  l3_cache: string | null;
+  sockets: string | null;
+  stepping: string | null;
+}
+
+export interface SwapDevice {
+  name: string;
+  kind: string;
+  size_kb: number;
+  used_kb: number;
+}
+
+export interface MemorySnapshot {
+  total_kb: number;
+  free_kb: number;
+  available_kb: number;
+  cached_kb: number;
+  buffers_kb: number;
+  shmem_kb: number;
+  active_kb: number;
+  inactive_kb: number;
+  dirty_kb: number;
+  writeback_kb: number;
+  slab_kb: number;
+  page_tables_kb: number;
+  commit_limit_kb: number;
+  committed_kb: number;
+  swap_total_kb: number;
+  swap_used_kb: number;
+  swap_devices: SwapDevice[];
+}
+
+export interface NetworkInterfaceSnapshot {
+  name: string;
+  rx_bytes_per_sec: number;
+  tx_bytes_per_sec: number;
+  total_rx_bytes: number;
+  total_tx_bytes: number;
+  rx_packets_per_sec: number;
+  tx_packets_per_sec: number;
+  total_rx_errors: number;
+  total_tx_errors: number;
+  mac: string;
+  ips: string[];
+  mtu: number;
+  speed_mbps: number | null;
+  operstate: string;
+  is_wireless: boolean;
+}
+
+export interface TickSnapshot {
+  timestamp_ms: number;
+  cpu: CpuSnapshot;
+  memory: MemorySnapshot;
+  network: NetworkInterfaceSnapshot[];
+}
+
+export interface DiskMountSnapshot {
+  mount_point: string;
+  device: string;
+  fs_type: string;
+  total_bytes: number;
+  available_bytes: number;
+  is_removable: boolean;
+}
+
+export interface DiskIoSnapshot {
+  device: string;
+  read_bytes_per_sec: number;
+  write_bytes_per_sec: number;
+  read_iops: number;
+  write_iops: number;
+  util_pct: number;
+  model: string | null;
+  size_bytes: number;
+  rotational: boolean;
+}
+
+export interface DiskSnapshot {
+  mounts: DiskMountSnapshot[];
+  io: DiskIoSnapshot[];
+}
+
+export interface GpuSnapshot {
+  name: string;
+  driver: string;
+  driver_version: string | null;
+  vbios_version: string | null;
+  pci_address: string | null;
+  utilization_pct: number | null;
+  mem_used_mb: number | null;
+  mem_total_mb: number | null;
+  mem_reserved_mb: number | null;
+  temp_c: number | null;
+  temp_crit_c: number | null;
+  power_w: number | null;
+  power_limit_w: number | null;
+  fan_pct: number | null;
+  clock_core_mhz: number | null;
+  clock_mem_mhz: number | null;
+  pcie_link: string | null;
+  note: string | null;
+}
+
+export interface ProcessInfo {
+  pid: number;
+  ppid: number;
+  name: string;
+  cmd: string;
+  user: string;
+  cpu_pct: number;
+  mem_bytes: number;
+  status: string;
+  run_time_secs: number;
+  nice: number;
+  disk_read_bytes_per_sec: number;
+  disk_write_bytes_per_sec: number;
+}
+
+export interface ProcessQuery {
+  sort_by: "cpu" | "mem" | "pid" | "name" | "user" | "disk";
+  sort_desc: boolean;
+  search: string | null;
+  limit: number | null;
+}
+
+export interface ServiceInfo {
+  name: string;
+  description: string;
+  active_state: string;
+  sub_state: string;
+  unit_file_state: string;
+}
+
+export interface StartupApp {
+  file_name: string;
+  name: string;
+  exec: string;
+  comment: string;
+  enabled: boolean;
+  is_system: boolean;
+}
+
+export interface CleanCategory {
+  id: string;
+  label: string;
+  description: string;
+  size_bytes: number;
+  item_count: number;
+  needs_root: boolean;
+}
+
+export interface PackageInfo {
+  name: string;
+  version: string;
+  installed_size_kb: number;
+  summary: string;
+}
+
+export interface UsageLogStatus {
+  active: boolean;
+  path: string | null;
+  rows: number;
+  started_ms: number | null;
+}
+
+export interface InfoEntry {
+  label: string;
+  value: string;
+}
+
+export interface InfoSection {
+  id: string;
+  title: string;
+  entries: InfoEntry[];
+}
+
+export interface SystemInfo {
+  hostname: string;
+  kernel_version: string;
+  os_pretty_name: string;
+  cpu_model: string;
+  physical_cores: number;
+  logical_cores: number;
+  total_memory_kb: number;
+  uptime_secs: number;
+}
