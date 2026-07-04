@@ -1,4 +1,4 @@
-const REFRESH_KEY = "vantage.refreshMs";
+const REFRESH_KEY = "flux.refreshMs";
 
 export const REFRESH_OPTIONS = [
   { ms: 500, label: "0.5s" },

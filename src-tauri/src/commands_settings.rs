@@ -48,7 +48,7 @@ fn status_from(log: &Option<UsageLog>) -> UsageLogStatus {
 fn log_dir() -> Result<PathBuf, String> {
     let home = std::env::var("HOME").map_err(|_| "HOME not set".to_string())?;
     let dir = PathBuf::from(home)
-        .join(".local/share/vantage/logs");
+        .join(".local/share/flux/logs");
     std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
     Ok(dir)
 }

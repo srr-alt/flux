@@ -979,6 +979,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "flux"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "libc",
+ "nix",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "tauri-plugin-single-instance",
+ "tokio",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4092,23 +4109,6 @@ dependencies = [
  "js-sys",
  "serde_core",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "vantage"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "libc",
- "nix",
- "serde",
- "serde_json",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tauri-plugin-single-instance",
- "tokio",
 ]
 
 [[package]]

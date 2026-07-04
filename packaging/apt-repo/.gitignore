@@ -1,0 +1,6 @@
+# Private GPG signing keyring — never commit
+gnupg/
+# reprepro working database
+db/
+# generated repo tree (deployed to GitHub Pages, not stored here)
+publish/

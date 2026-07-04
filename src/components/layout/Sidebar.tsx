@@ -13,7 +13,7 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
     <aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface">
       <div className="px-4 py-5">
         <div className="text-base font-bold tracking-tight text-ink-primary">
-          Vantage
+          Flux
         </div>
         {systemInfo && (
           <div className="mt-0.5 truncate text-xs text-ink-muted">

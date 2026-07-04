@@ -1,0 +1,23 @@
+Origin: Flux
+Label: Flux
+Codename: jammy
+Architectures: amd64
+Components: main
+Description: Flux apt repository (Ubuntu 22.04)
+SignWith: 703CD0EB7F088E1CB4E61178A3BFBD72454C3F61
+
+Origin: Flux
+Label: Flux
+Codename: noble
+Architectures: amd64
+Components: main
+Description: Flux apt repository (Ubuntu 24.04)
+SignWith: 703CD0EB7F088E1CB4E61178A3BFBD72454C3F61
+
+Origin: Flux
+Label: Flux
+Codename: resolute
+Architectures: amd64
+Components: main
+Description: Flux apt repository (Ubuntu 26.04)
+SignWith: 703CD0EB7F088E1CB4E61178A3BFBD72454C3F61

@@ -6,7 +6,7 @@ pub fn kill_process(pid: u32, force: bool) -> Result<(), String> {
         return Err("Refusing to kill PID 1 (init/systemd).".into());
     }
     if pid == std::process::id() {
-        return Err("Refusing to kill Vantage itself.".into());
+        return Err("Refusing to kill Flux itself.".into());
     }
     let signal = if force { Signal::SIGKILL } else { Signal::SIGTERM };
     kill(Pid::from_raw(pid as i32), signal).map_err(|err| match err {
