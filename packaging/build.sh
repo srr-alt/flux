@@ -72,6 +72,9 @@ for entry in "${TARGETS[@]}"; do
         /src/ /work/src/
       cd /work/src
       npm ci
+      # The work volume persists between builds; clear old bundles so only
+      # this build's .deb lands in /out.
+      rm -f src-tauri/target/release/bundle/deb/*.deb
       npm run tauri build -- --bundles deb $feature_flag $config_flag
       cp src-tauri/target/release/bundle/deb/*.deb /out/
       chown -R \"\$HOST_UID:\$HOST_GID\" /out
