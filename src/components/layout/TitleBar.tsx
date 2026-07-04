@@ -20,6 +20,9 @@ export function TitleBar() {
   // The `data-tauri-drag-region` attribute alone doesn't reliably move an
   // undecorated window on Linux/GTK — wiring startDragging() explicitly does.
   const onMouseDown = (e: React.MouseEvent) => {
+    // Mousedown on the window buttons bubbles up here; startDragging()
+    // would grab the pointer and the button's click event never fires.
+    if ((e.target as HTMLElement).closest("button")) return;
     if (e.buttons === 1) {
       if (e.detail === 2) {
         win.toggleMaximize();

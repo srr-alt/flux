@@ -6,7 +6,9 @@ use crate::state::AppState;
 
 #[tauri::command]
 pub fn list_processes(state: State<'_, AppState>, query: ProcessQuery) -> Vec<ProcessInfo> {
-    let mut sys = state.sys.lock().unwrap();
+    // proc_sys, not sys: the tick loop's CPU refreshes on the shared System
+    // would reset the jiffies baseline sysinfo uses for process CPU%.
+    let mut sys = state.proc_sys.lock().unwrap();
     // without_tasks: only real processes — otherwise every thread shows up
     // as its own entry, each reporting the full process memory.
     sys.refresh_processes_specifics(

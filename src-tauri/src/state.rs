@@ -20,6 +20,11 @@ pub struct UsageLog {
 
 pub struct AppState {
     pub sys: Mutex<System>,
+    /// Dedicated System for the process table. sysinfo derives per-process
+    /// CPU% from the global jiffies delta since *this instance's* previous
+    /// refresh; the tick loop's refresh_cpu on the shared `sys` would reset
+    /// that baseline and inflate process CPU% far past 100.
+    pub proc_sys: Mutex<System>,
     pub networks: Mutex<Networks>,
     pub disks: Mutex<Disks>,
     /// Previous /proc/diskstats counters for I/O rate calculation.
@@ -42,8 +47,14 @@ pub struct AppState {
 
 impl AppState {
     pub fn new() -> Self {
+        // Populate the CPU list once so process::list's per-core
+        // normalization (sys.cpus().len()) works on the process System,
+        // which otherwise never refreshes CPUs.
+        let mut proc_sys = System::new();
+        proc_sys.refresh_cpu_list(sysinfo::CpuRefreshKind::nothing());
         Self {
             sys: Mutex::new(System::new()),
+            proc_sys: Mutex::new(proc_sys),
             networks: Mutex::new(Networks::new_with_refreshed_list()),
             disks: Mutex::new(Disks::new_with_refreshed_list()),
             prev_disk_io: Mutex::new(HashMap::new()),
