@@ -1,9 +1,9 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use sysinfo::Networks;
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct NetworkInterfaceSnapshot {
     pub name: String,
     pub rx_bytes_per_sec: f64,
@@ -21,6 +21,46 @@ pub struct NetworkInterfaceSnapshot {
     pub speed_mbps: Option<u64>,
     pub operstate: String,
     pub is_wireless: bool,
+}
+
+/// Cumulative per-interface counters from one /proc/net/dev line.
+#[derive(Clone, Copy, Default)]
+pub struct NetCounters {
+    pub rx_bytes: u64,
+    pub rx_packets: u64,
+    pub rx_errors: u64,
+    pub tx_bytes: u64,
+    pub tx_packets: u64,
+    pub tx_errors: u64,
+}
+
+/// Parse /proc/net/dev (skips the two header lines and `lo`).
+pub fn parse_net_dev(raw: &str) -> std::collections::HashMap<String, NetCounters> {
+    raw.lines()
+        .skip(2)
+        .filter_map(|line| {
+            let (name, rest) = line.split_once(':')?;
+            let name = name.trim();
+            if name == "lo" {
+                return None;
+            }
+            let f: Vec<u64> = rest
+                .split_whitespace()
+                .map(|v| v.parse().unwrap_or(0))
+                .collect();
+            Some((
+                name.to_string(),
+                NetCounters {
+                    rx_bytes: f.first().copied().unwrap_or(0),
+                    rx_packets: f.get(1).copied().unwrap_or(0),
+                    rx_errors: f.get(2).copied().unwrap_or(0),
+                    tx_bytes: f.get(8).copied().unwrap_or(0),
+                    tx_packets: f.get(9).copied().unwrap_or(0),
+                    tx_errors: f.get(10).copied().unwrap_or(0),
+                },
+            ))
+        })
+        .collect()
 }
 
 fn sysfs(name: &str, file: &str) -> Option<String> {

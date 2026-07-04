@@ -1,9 +1,11 @@
+mod commands_hosts;
 mod commands_modules;
 mod commands_monitor;
 mod commands_process;
 mod commands_settings;
 mod modules;
 mod monitor;
+mod remote;
 mod state;
 
 use std::io::Write;
@@ -78,10 +80,19 @@ pub fn run() {
             commands_settings::start_usage_log,
             commands_settings::stop_usage_log,
             commands_settings::get_usage_log_status,
+            commands_hosts::list_hosts,
+            commands_hosts::test_host_connection,
+            commands_hosts::add_host,
+            commands_hosts::connect_host,
+            commands_hosts::disconnect_host,
+            commands_hosts::remove_host,
+            commands_hosts::list_remote_processes,
+            commands_hosts::kill_remote_process,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(monitor_loop(handle));
+            commands_hosts::autoconnect_saved_hosts(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())

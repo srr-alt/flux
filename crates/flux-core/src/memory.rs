@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 
-#[derive(Serialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct SwapDevice {
     pub name: String,
     pub kind: String,
@@ -10,7 +10,7 @@ pub struct SwapDevice {
     pub used_kb: u64,
 }
 
-#[derive(Serialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct MemorySnapshot {
     pub total_kb: u64,
     pub free_kb: u64,
@@ -34,10 +34,15 @@ pub struct MemorySnapshot {
 /// Parse /proc/meminfo directly: we want the full Linux breakdown
 /// (buffers/cached/reclaimable/shmem), not sysinfo's cross-platform subset.
 pub fn snapshot() -> MemorySnapshot {
-    let Ok(raw) = fs::read_to_string("/proc/meminfo") else {
-        return MemorySnapshot::default();
-    };
-    let fields: HashMap<&str, u64> = raw
+    let meminfo = fs::read_to_string("/proc/meminfo").unwrap_or_default();
+    let swaps = fs::read_to_string("/proc/swaps").unwrap_or_default();
+    parse(&meminfo, &swaps)
+}
+
+/// Pure parser over /proc/meminfo + /proc/swaps contents — shared by the
+/// local snapshot above and the agentless SSH collector.
+pub fn parse(meminfo_raw: &str, swaps_raw: &str) -> MemorySnapshot {
+    let fields: HashMap<&str, u64> = meminfo_raw
         .lines()
         .filter_map(|line| {
             let (key, rest) = line.split_once(':')?;
@@ -66,14 +71,11 @@ pub fn snapshot() -> MemorySnapshot {
         committed_kb: get("Committed_AS"),
         swap_total_kb: get("SwapTotal"),
         swap_used_kb: get("SwapTotal").saturating_sub(get("SwapFree")),
-        swap_devices: swap_devices(),
+        swap_devices: parse_swaps(swaps_raw),
     }
 }
 
-fn swap_devices() -> Vec<SwapDevice> {
-    let Ok(raw) = fs::read_to_string("/proc/swaps") else {
-        return Vec::new();
-    };
+pub fn parse_swaps(raw: &str) -> Vec<SwapDevice> {
     raw.lines()
         .skip(1)
         .filter_map(|line| {

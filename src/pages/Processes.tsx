@@ -1,8 +1,15 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Layers } from "lucide-react";
-import { killProcess, listProcesses, reniceProcess } from "../lib/tauri";
+import {
+  killProcess,
+  killRemoteProcess,
+  listProcesses,
+  listRemoteProcesses,
+  reniceProcess,
+} from "../lib/tauri";
+import { HostSwitcher } from "../components/hosts/HostSwitcher";
+import { useSelectedHostMetrics, useSelectedSystemInfo } from "../hooks/useHostMetrics";
 import { formatBytes, formatBytesPerSec, formatPercent } from "../lib/format";
-import { useMonitorStore } from "../state/monitorStore";
 import type { ProcessInfo } from "../types/monitor";
 
 type SortKey = "name" | "user" | "cpu" | "mem" | "disk";
@@ -58,26 +65,29 @@ export function Processes() {
   const [confirmKill, setConfirmKill] = useState<ProcessInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const latest = useMonitorStore((s) => s.latest);
-  const systemInfo = useMonitorStore((s) => s.systemInfo);
-  const disks = useMonitorStore((s) => s.disks);
+  const { latest, disks, isLocal, hostId } = useSelectedHostMetrics();
+  const systemInfo = useSelectedSystemInfo();
 
   const refresh = useCallback(async () => {
     try {
-      const result = await listProcesses({
-        sort_by: "cpu",
+      const query = {
+        sort_by: "cpu" as const,
         sort_desc: true,
         search: null,
         limit: null,
-      });
+      };
+      const result = isLocal
+        ? await listProcesses(query)
+        : await listRemoteProcesses(hostId, query);
       setProcesses(result);
     } catch {
       // transient failures (e.g. mid-navigation) — keep the last list
     }
-  }, []);
+  }, [isLocal, hostId]);
 
-  // Poll only while this page is mounted.
+  // Poll only while this page is mounted; restart on host switch.
   useEffect(() => {
+    setProcesses([]);
     refresh();
     const id = setInterval(refresh, 2000);
     return () => clearInterval(id);
@@ -157,7 +167,8 @@ export function Processes() {
     setConfirmKill(null);
     setError(null);
     try {
-      await killProcess(proc.pid, force);
+      if (isLocal) await killProcess(proc.pid, force);
+      else await killRemoteProcess(hostId, proc.pid, force);
       refresh();
     } catch (e) {
       setError(String(e));
@@ -196,6 +207,7 @@ export function Processes() {
 
   const actionButtons = (proc: ProcessInfo) => (
     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100">
+      {isLocal && (
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -206,6 +218,8 @@ export function Processes() {
       >
         −
       </button>
+      )}
+      {isLocal && (
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -216,6 +230,7 @@ export function Processes() {
       >
         +
       </button>
+      )}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -256,7 +271,10 @@ export function Processes() {
   return (
     <div className="flex h-full flex-col p-6">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h1 className="text-lg font-semibold text-ink-primary">Processes</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold text-ink-primary">Processes</h1>
+          <HostSwitcher />
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setGrouped((g) => !g)}

@@ -15,6 +15,7 @@ import type {
   TickSnapshot,
   UsageLogStatus,
 } from "../types/monitor";
+import type { HostStatus, HostView, NewHost, TestResult } from "../types/hosts";
 
 export const EVENTS = {
   TICK: "monitor://tick",
@@ -145,4 +146,90 @@ export function getUsageLogStatus(): Promise<UsageLogStatus> {
 
 export function getHardwareInfo(): Promise<InfoSection[]> {
   return invoke("get_hardware_info");
+}
+
+// --- Remote hosts ---
+
+export const HOST_EVENTS = {
+  STATUS: "hosts://status",
+  REMOTE_TICK: "monitor://remote-tick",
+  REMOTE_DISKS: "monitor://remote-disks",
+  DEPLOY_PROGRESS: "deploy://progress",
+} as const;
+
+export interface HostStatusEvent {
+  host_id: string;
+  status: HostStatus;
+  system_info?: SystemInfo;
+}
+
+export interface RemoteEvent<T> {
+  host_id: string;
+  snapshot: T;
+}
+
+export function listHosts(): Promise<HostView[]> {
+  return invoke("list_hosts");
+}
+
+export function testHostConnection(
+  address: string,
+  port: number,
+  username: string,
+  password?: string,
+): Promise<TestResult> {
+  return invoke("test_host_connection", { address, port, username, password });
+}
+
+export function addHost(newHost: NewHost, password: string): Promise<HostView> {
+  return invoke("add_host", { new: newHost, password });
+}
+
+export function connectHost(hostId: string): Promise<void> {
+  return invoke("connect_host", { hostId });
+}
+
+export function disconnectHost(hostId: string): Promise<void> {
+  return invoke("disconnect_host", { hostId });
+}
+
+export function removeHost(hostId: string): Promise<void> {
+  return invoke("remove_host", { hostId });
+}
+
+export function listRemoteProcesses(
+  hostId: string,
+  query: ProcessQuery,
+): Promise<ProcessInfo[]> {
+  return invoke("list_remote_processes", { hostId, query });
+}
+
+export function killRemoteProcess(
+  hostId: string,
+  pid: number,
+  force: boolean,
+): Promise<void> {
+  return invoke("kill_remote_process", { hostId, pid, force });
+}
+
+export function onHostStatus(
+  callback: (event: HostStatusEvent) => void,
+): Promise<UnlistenFn> {
+  return listen<HostStatusEvent>(HOST_EVENTS.STATUS, (e) => callback(e.payload));
+}
+
+export function onRemoteTick(
+  callback: (event: RemoteEvent<TickSnapshot>) => void,
+): Promise<UnlistenFn> {
+  return listen<RemoteEvent<TickSnapshot>>(HOST_EVENTS.REMOTE_TICK, (e) =>
+    callback(e.payload),
+  );
+}
+
+export function onRemoteDisks(
+  callback: (event: RemoteEvent<DiskSnapshot>) => void,
+): Promise<UnlistenFn> {
+  return listen<RemoteEvent<DiskSnapshot>>(HOST_EVENTS.REMOTE_DISKS, (e) =>
+    callback(e.payload),
+  );
 }

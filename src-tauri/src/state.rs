@@ -43,6 +43,10 @@ pub struct AppState {
     /// When the process table was last refreshed; io-counter deltas since
     /// then become per-process disk rates.
     pub last_proc_refresh: Mutex<Option<std::time::Instant>>,
+    /// Saved remote host configs (mirrors hosts.json).
+    pub hosts: Mutex<Vec<crate::remote::hosts::HostConfig>>,
+    /// Control handles for the per-host poller threads.
+    pub host_runtimes: Mutex<HashMap<crate::remote::HostId, crate::commands_hosts::HostRuntime>>,
 }
 
 impl AppState {
@@ -64,6 +68,8 @@ impl AppState {
             last_gpus: Mutex::new(Vec::new()),
             usage_log: Mutex::new(None),
             last_proc_refresh: Mutex::new(None),
+            hosts: Mutex::new(Vec::new()),
+            host_runtimes: Mutex::new(HashMap::new()),
         }
     }
 }

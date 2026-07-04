@@ -1,0 +1,11 @@
+[package]
+name = "flux-agent"
+version = "0.1.1"
+edition = "2021"
+description = "Headless Flux metrics agent: streams JSON-lines snapshots over stdout, driven via SSH"
+
+[dependencies]
+flux-core = { path = "../flux-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sysinfo = { workspace = true }

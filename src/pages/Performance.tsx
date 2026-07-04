@@ -11,6 +11,11 @@ import {
 } from "../lib/format";
 import { getCpuDetails } from "../lib/tauri";
 import { useMonitorStore } from "../state/monitorStore";
+import {
+  useSelectedHostMetrics,
+  useSelectedSystemInfo,
+} from "../hooks/useHostMetrics";
+import { HostSwitcher } from "../components/hosts/HostSwitcher";
 import type { CpuDetails as CpuDetailsType } from "../types/monitor";
 
 const COLORS = {
@@ -32,24 +37,35 @@ type Selection = string; // "cpu" | "memory" | `disk:${device}` | `net:${iface}`
 
 export function Performance() {
   const [selected, setSelected] = useState<Selection>("cpu");
-  const latest = useMonitorStore((s) => s.latest);
-  const timestamps = useMonitorStore((s) => s.timestamps);
-  const cpuHistory = useMonitorStore((s) => s.cpuHistory);
-  const memUsedPctHistory = useMonitorStore((s) => s.memUsedPctHistory);
-  const netRx = useMonitorStore((s) => s.netRx);
-  const netTx = useMonitorStore((s) => s.netTx);
-  const diskTimestamps = useMonitorStore((s) => s.diskTimestamps);
-  const diskRead = useMonitorStore((s) => s.diskRead);
-  const diskWrite = useMonitorStore((s) => s.diskWrite);
+  const {
+    latest,
+    timestamps,
+    cpuHistory,
+    memUsedPctHistory,
+    netRx,
+    netTx,
+    diskTimestamps,
+    diskRead,
+    diskWrite,
+    isLocal,
+    hostId,
+  } = useSelectedHostMetrics();
   const gpus = useMonitorStore((s) => s.gpus);
   const gpuTimestamps = useMonitorStore((s) => s.gpuTimestamps);
   const gpuUtil = useMonitorStore((s) => s.gpuUtil);
   const gpuTemp = useMonitorStore((s) => s.gpuTemp);
 
+  useEffect(() => {
+    setSelected("cpu");
+  }, [hostId]);
+
   if (!latest) {
     return (
       <div className="flex h-full items-center justify-center text-ink-muted">
-        Collecting first sample…
+        <div className="flex flex-col items-center gap-3">
+          <HostSwitcher />
+          <span>Collecting first sample…</span>
+        </div>
       </div>
     );
   }
@@ -62,6 +78,9 @@ export function Performance() {
     <div className="flex h-full">
       {/* Rail */}
       <div className="w-64 shrink-0 space-y-1.5 overflow-y-auto border-r border-border p-3">
+        <div className="pb-1.5">
+          <HostSwitcher />
+        </div>
         <RailItem
           active={selected === "cpu"}
           onClick={() => setSelected("cpu")}
@@ -96,7 +115,7 @@ export function Performance() {
             ]}
           />
         ))}
-        {gpus.map((gpu, i) => {
+        {isLocal && gpus.map((gpu, i) => {
           const key = String(i);
           const hasUtil = gpu.utilization_pct !== null;
           return (
@@ -146,7 +165,7 @@ export function Performance() {
           <DiskDetail device={selected.slice(5)} />
         )}
         {selected.startsWith("net:") && <NetDetail iface={selected.slice(4)} />}
-        {selected.startsWith("gpu:") && (
+        {isLocal && selected.startsWith("gpu:") && (
           <GpuDetail index={Number(selected.slice(4))} />
         )}
       </div>
@@ -213,14 +232,17 @@ function DetailHeader({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 function CpuDetail() {
-  const latest = useMonitorStore((s) => s.latest);
-  const systemInfo = useMonitorStore((s) => s.systemInfo);
-  const timestamps = useMonitorStore((s) => s.timestamps);
-  const cpuHistory = useMonitorStore((s) => s.cpuHistory);
+  const { latest, timestamps, cpuHistory, isLocal } = useSelectedHostMetrics();
+  const systemInfo = useSelectedSystemInfo();
   const [details, setDetails] = useState<CpuDetailsType | null>(null);
   useEffect(() => {
-    getCpuDetails().then(setDetails).catch(() => {});
-  }, []);
+    // lscpu facts are local-machine only
+    if (isLocal) {
+      getCpuDetails().then(setDetails).catch(() => {});
+    } else {
+      setDetails(null);
+    }
+  }, [isLocal]);
   if (!latest) return null;
   const cpu = latest.cpu;
   const maxTemp = cpu.per_core_temp_c ? Math.max(...cpu.per_core_temp_c) : null;
@@ -323,9 +345,7 @@ function CpuDetail() {
 }
 
 function MemoryDetail() {
-  const latest = useMonitorStore((s) => s.latest);
-  const timestamps = useMonitorStore((s) => s.timestamps);
-  const memUsedPctHistory = useMonitorStore((s) => s.memUsedPctHistory);
+  const { latest, timestamps, memUsedPctHistory } = useSelectedHostMetrics();
   if (!latest) return null;
   const mem = latest.memory;
   const usedKb = mem.total_kb - mem.free_kb - mem.cached_kb - mem.buffers_kb;
@@ -419,10 +439,7 @@ function MemoryDetail() {
 }
 
 function DiskDetail({ device }: { device: string }) {
-  const disks = useMonitorStore((s) => s.disks);
-  const diskTimestamps = useMonitorStore((s) => s.diskTimestamps);
-  const diskRead = useMonitorStore((s) => s.diskRead);
-  const diskWrite = useMonitorStore((s) => s.diskWrite);
+  const { disks, diskTimestamps, diskRead, diskWrite } = useSelectedHostMetrics();
   const mounts =
     disks?.mounts.filter((m) => m.device.includes(device) && m.total_bytes > 0) ?? [];
   const io = disks?.io.find((d) => d.device === device);
@@ -496,10 +513,7 @@ function DiskDetail({ device }: { device: string }) {
 }
 
 function NetDetail({ iface }: { iface: string }) {
-  const latest = useMonitorStore((s) => s.latest);
-  const timestamps = useMonitorStore((s) => s.timestamps);
-  const netRx = useMonitorStore((s) => s.netRx);
-  const netTx = useMonitorStore((s) => s.netTx);
+  const { latest, timestamps, netRx, netTx } = useSelectedHostMetrics();
   const current = latest?.network.find((n) => n.name === iface);
 
   return (

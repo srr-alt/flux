@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs;
 use sysinfo::System;
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ProcessInfo {
     pub pid: u32,
     pub ppid: u32,
@@ -21,7 +21,7 @@ pub struct ProcessInfo {
     pub disk_write_bytes_per_sec: f64,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ProcessQuery {
     pub sort_by: String,
     pub sort_desc: bool,

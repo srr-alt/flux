@@ -1,11 +1,11 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::OnceLock;
 use sysinfo::System;
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CpuSnapshot {
     pub global_usage_pct: f32,
     pub per_core_usage_pct: Vec<f32>,
@@ -39,20 +39,78 @@ pub fn snapshot(sys: &System) -> CpuSnapshot {
 }
 
 fn read_task_counts() -> (u64, u64) {
-    let Ok(raw) = fs::read_to_string("/proc/loadavg") else {
-        return (0, 0);
-    };
-    raw.split_whitespace()
-        .nth(3)
-        .and_then(|field| {
-            let (running, total) = field.split_once('/')?;
-            Some((running.parse().ok()?, total.parse().ok()?))
+    let raw = fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    let parsed = parse_loadavg(&raw);
+    (parsed.tasks_running, parsed.tasks_total)
+}
+
+/// Parsed /proc/loadavg line.
+#[derive(Default, Clone, Copy)]
+pub struct LoadAvg {
+    pub one: f64,
+    pub five: f64,
+    pub fifteen: f64,
+    pub tasks_running: u64,
+    pub tasks_total: u64,
+}
+
+pub fn parse_loadavg(raw: &str) -> LoadAvg {
+    let mut fields = raw.split_whitespace();
+    let mut load = LoadAvg::default();
+    load.one = fields.next().and_then(|f| f.parse().ok()).unwrap_or(0.0);
+    load.five = fields.next().and_then(|f| f.parse().ok()).unwrap_or(0.0);
+    load.fifteen = fields.next().and_then(|f| f.parse().ok()).unwrap_or(0.0);
+    if let Some((running, total)) = fields.next().and_then(|f| f.split_once('/')) {
+        load.tasks_running = running.parse().unwrap_or(0);
+        load.tasks_total = total.parse().unwrap_or(0);
+    }
+    load
+}
+
+/// One "cpu…" line of /proc/stat, reduced to what usage% needs.
+#[derive(Clone, Copy, Default, PartialEq)]
+pub struct CpuTicks {
+    pub total: u64,
+    pub idle: u64,
+}
+
+/// Parse /proc/stat "cpu"/"cpuN" lines. Index 0 is the aggregate line,
+/// the rest are per-core in order. idle = idle + iowait.
+pub fn parse_stat(raw: &str) -> Vec<CpuTicks> {
+    raw.lines()
+        .filter(|l| l.starts_with("cpu"))
+        .map(|line| {
+            let fields: Vec<u64> = line
+                .split_whitespace()
+                .skip(1)
+                .map(|f| f.parse().unwrap_or(0))
+                .collect();
+            CpuTicks {
+                total: fields.iter().sum(),
+                idle: fields.get(3).copied().unwrap_or(0) + fields.get(4).copied().unwrap_or(0),
+            }
         })
-        .unwrap_or((0, 0))
+        .collect()
+}
+
+/// Usage% per entry between two parse_stat samples (same ordering).
+pub fn usage_between(prev: &[CpuTicks], cur: &[CpuTicks]) -> Vec<f32> {
+    cur.iter()
+        .zip(prev)
+        .map(|(c, p)| {
+            let total = c.total.saturating_sub(p.total);
+            let idle = c.idle.saturating_sub(p.idle);
+            if total == 0 {
+                0.0
+            } else {
+                (total - idle) as f32 / total as f32 * 100.0
+            }
+        })
+        .collect()
 }
 
 /// Static CPU facts from lscpu, resolved once.
-#[derive(Serialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct CpuDetails {
     pub architecture: Option<String>,
     pub vendor: Option<String>,
