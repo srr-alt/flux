@@ -135,8 +135,19 @@ pub fn install_flux_deb(
             ));
         }
 
-        // Everything root-requiring goes through one sudo -S shell so the
-        // password is sent once, via stdin.
+        // Root either directly (root login) or via sudo -S; check sudo
+        // exists first — minimal containers/servers often lack it and the
+        // raw failure ("sudo: command not found", exit 127) is cryptic.
+        let is_root = config.username == "root";
+        if !is_root && session.exec_capture("command -v sudo").is_err() {
+            return Err(format!(
+                "sudo is not installed on {} — install it there first (as root: apt-get install sudo && usermod -aG sudo {}) or add the host as user root",
+                config.address, config.username
+            ));
+        }
+
+        // Everything root-requiring goes through one shell so the password
+        // is sent once, via stdin.
         progress(app, host_id, "installing apt repo + flux", 25, None);
         let script = format!(
             "set -e\n\
@@ -151,11 +162,14 @@ pub fn install_flux_deb(
             .session
             .channel_session()
             .map_err(|e| e.to_string())?;
+        let (shell_cmd, stdin_payload) = if is_root {
+            ("bash -s".to_string(), script)
+        } else {
+            ("sudo -S -p '' bash -s".to_string(), format!("{sudo_password}\n{script}"))
+        };
+        channel.exec(&shell_cmd).map_err(|e| e.to_string())?;
         channel
-            .exec("sudo -S -p '' bash -s")
-            .map_err(|e| e.to_string())?;
-        channel
-            .write_all(format!("{sudo_password}\n{script}").as_bytes())
+            .write_all(stdin_payload.as_bytes())
             .map_err(|e| format!("write: {e}"))?;
         channel.send_eof().map_err(|e| e.to_string())?;
 
