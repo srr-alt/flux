@@ -1,12 +1,12 @@
-mod commands_hosts;
+pub mod commands_hosts;
 mod commands_modules;
 mod commands_monitor;
 mod commands_process;
 mod commands_settings;
 mod modules;
 mod monitor;
-mod remote;
-mod state;
+pub mod remote;
+pub mod state;
 
 use std::io::Write;
 use std::sync::atomic::Ordering;
