@@ -75,6 +75,12 @@ for entry in "${TARGETS[@]}"; do
       # The work volume persists between builds; clear old bundles so only
       # this build's .deb lands in /out.
       rm -f target/release/bundle/deb/*.deb
+      # Build the headless agent first and bundle it as a resource so the
+      # app can deploy it to remote hosts.
+      cargo build --release -p flux-agent
+      mkdir -p src-tauri/resources
+      cp target/release/flux-agent src-tauri/resources/flux-agent
+      cp target/release/flux-agent /out/flux-agent
       npm run tauri build -- --bundles deb $feature_flag $config_flag
       cp target/release/bundle/deb/*.deb /out/
       chown -R \"\$HOST_UID:\$HOST_GID\" /out

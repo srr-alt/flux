@@ -1,4 +1,6 @@
+pub mod agent_client;
 pub mod agentless;
+pub mod deploy;
 pub mod hosts;
 pub mod poller;
 pub mod session;

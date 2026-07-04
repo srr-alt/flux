@@ -212,6 +212,27 @@ export function killRemoteProcess(
   return invoke("kill_remote_process", { hostId, pid, force });
 }
 
+/** Uploads the bundled flux-agent and switches collection to agent mode. */
+export function deployAgent(hostId: string): Promise<string> {
+  return invoke("deploy_agent", { hostId });
+}
+
+export function installFluxDeb(
+  hostId: string,
+  sudoPassword: string,
+): Promise<void> {
+  return invoke("install_flux_deb", { hostId, sudoPassword });
+}
+
+export function onDeployProgress(
+  callback: (progress: import("../types/hosts").DeployProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<import("../types/hosts").DeployProgress>(
+    HOST_EVENTS.DEPLOY_PROGRESS,
+    (e) => callback(e.payload),
+  );
+}
+
 export function onHostStatus(
   callback: (event: HostStatusEvent) => void,
 ): Promise<UnlistenFn> {

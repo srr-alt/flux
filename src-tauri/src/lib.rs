@@ -88,6 +88,8 @@ pub fn run() {
             commands_hosts::remove_host,
             commands_hosts::list_remote_processes,
             commands_hosts::kill_remote_process,
+            commands_hosts::deploy_agent,
+            commands_hosts::install_flux_deb,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

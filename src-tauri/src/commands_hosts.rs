@@ -333,6 +333,57 @@ pub async fn list_remote_processes(
     .map_err(|e| e.to_string())?
 }
 
+fn config_for(state: &AppState, host_id: &str) -> Result<HostConfig, String> {
+    state
+        .hosts
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|h| h.id == host_id)
+        .cloned()
+        .ok_or_else(|| "unknown host".into())
+}
+
+/// Upload the bundled flux-agent, verify it, and switch the poller to
+/// agent mode. Returns the agent version string.
+#[tauri::command]
+pub async fn deploy_agent(app: AppHandle, host_id: HostId) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let config = config_for(&state, &host_id)?;
+        let version =
+            crate::remote::deploy::deploy_agent(&app, &host_id, &config, &known_hosts_path(&app))?;
+        if let Some(runtime) = state.host_runtimes.lock().unwrap().get(&host_id) {
+            let _ = runtime.control_tx.send(Control::SwitchToAgent);
+        }
+        Ok(version)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Install the Flux .deb on the remote from the hosted apt repo.
+#[tauri::command]
+pub async fn install_flux_deb(
+    app: AppHandle,
+    host_id: HostId,
+    sudo_password: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let config = config_for(&state, &host_id)?;
+        crate::remote::deploy::install_flux_deb(
+            &app,
+            &host_id,
+            &config,
+            &known_hosts_path(&app),
+            &sudo_password,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn kill_remote_process(
     app: AppHandle,

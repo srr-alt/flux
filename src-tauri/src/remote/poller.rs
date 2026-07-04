@@ -136,7 +136,26 @@ pub fn run(
                     let _ = reply.send(agentless::kill(&session, pid, force));
                 }
                 Ok(Control::SwitchToAgent) => {
-                    // Phase B lands here.
+                    match super::agent_client::run(&app, &host_id, &session, &control, interval_ms)
+                    {
+                        super::agent_client::AgentOutcome::Stopped => {
+                            emit_status(&app, &host_id, HostStatus::Disconnected);
+                            return;
+                        }
+                        super::agent_client::AgentOutcome::Died => {
+                            // Fall back to agentless on the same session;
+                            // rates need a fresh baseline.
+                            emit_status(
+                                &app,
+                                &host_id,
+                                HostStatus::Connected {
+                                    mode: CollectionMode::Agentless,
+                                },
+                            );
+                            deltas = AgentlessDeltas::new();
+                            deltas.uid_names = agentless::uid_table(&session);
+                        }
+                    }
                 }
                 Err(RecvTimeoutError::Timeout) => {}
             }

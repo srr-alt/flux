@@ -29,7 +29,7 @@ fi
 OLD=$(grep -m1 '"version"' src-tauri/tauri.conf.json | sed -E 's/.*: *"([^"]+)".*/\1/')
 echo "=== bump $OLD -> $VERSION ==="
 sed -i "s/\"version\": \"$OLD\"/\"version\": \"$VERSION\"/" package.json src-tauri/tauri.conf.json
-sed -i "0,/^version = \"$OLD\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml
+sed -i -s "0,/^version = \"$OLD\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml crates/flux-core/Cargo.toml crates/flux-agent/Cargo.toml
 (cd src-tauri && cargo check -q)   # refresh Cargo.lock
 
 git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
@@ -45,7 +45,10 @@ bash packaging/apt-repo/build.sh
 echo "=== push + GitHub Release ==="
 git push origin main "v$VERSION"
 DEBS=(packaging/dist/*/Flux_"$VERSION"+*_amd64.deb)
-gh release create "v$VERSION" "${DEBS[@]}" \
+# Jammy-built agent has the oldest glibc floor of the supported set —
+# that's the one shipped as the standalone release asset.
+cp packaging/dist/jammy/flux-agent packaging/dist/flux-agent-linux-amd64
+gh release create "v$VERSION" "${DEBS[@]}" packaging/dist/flux-agent-linux-amd64 \
   -t "Flux v$VERSION" \
   -n "Flux v$VERSION — .deb packages for Ubuntu 22.04 (jammy), 24.04 (noble), 26.04 (resolute).
 Prefer the apt repo for automatic updates: https://ydvsahil03.github.io/flux-apt/"

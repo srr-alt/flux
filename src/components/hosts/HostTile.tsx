@@ -18,6 +18,10 @@ interface HostTileProps {
   series: HostSeries;
   onOpen: () => void;
   onRemove?: () => void;
+  /** Shown while connected agentless: upgrade to full-detail agent. */
+  onDeployAgent?: () => void;
+  onInstallDeb?: () => void;
+  busyText?: string;
 }
 
 function statusColor(status: HostStatus | undefined, isLocal: boolean): string {
@@ -58,6 +62,9 @@ export function HostTile({
   series,
   onOpen,
   onRemove,
+  onDeployAgent,
+  onInstallDeb,
+  busyText,
 }: HostTileProps) {
   const latest = series.latest;
   const memPct =
@@ -128,6 +135,40 @@ export function HostTile({
         </span>
       </div>
       <Meter ratio={memPct / 100} color="#9085e9" label="Memory" detail={formatPercent(memPct)} />
+
+      {busyText ? (
+        <div className="truncate text-[11px] text-status-warning">{busyText}</div>
+      ) : (
+        !isLocal &&
+        status?.state === "connected" && (
+          <div className="flex gap-2">
+            {status.mode === "agentless" && onDeployAgent && (
+              <button
+                className="rounded bg-series-1/15 px-2 py-1 text-[11px] text-series-1 hover:bg-series-1/25"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeployAgent();
+                }}
+                title="Upload the flux-agent binary for full process detail"
+              >
+                Enable full detail
+              </button>
+            )}
+            {onInstallDeb && (
+              <button
+                className="rounded bg-white/5 px-2 py-1 text-[11px] text-ink-secondary hover:bg-white/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onInstallDeb();
+                }}
+                title="Install the Flux desktop app on this machine via apt"
+              >
+                Install Flux
+              </button>
+            )}
+          </div>
+        )
+      )}
 
       {onRemove && (
         <button

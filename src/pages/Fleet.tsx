@@ -1,9 +1,11 @@
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AddHostWizard } from "../components/hosts/AddHostWizard";
 import { HostTile } from "../components/hosts/HostTile";
+import { InstallDebModal } from "../components/hosts/InstallDebModal";
 import type { PageId } from "../config/navigation";
-import { removeHost, listHosts } from "../lib/tauri";
+import type { DeployProgress } from "../types/hosts";
+import { deployAgent, listHosts, onDeployProgress, removeHost } from "../lib/tauri";
 import { emptySeries, useFleetStore } from "../state/fleetStore";
 import { LOCAL_HOST_ID, useHostsStore } from "../state/hostsStore";
 import { useMonitorStore } from "../state/monitorStore";
@@ -25,6 +27,25 @@ export function Fleet({ onNavigate }: FleetProps) {
   const localCpu = useMonitorStore((s) => s.cpuHistory);
   const localMem = useMonitorStore((s) => s.memUsedPctHistory);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [installTarget, setInstallTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deploying, setDeploying] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    onDeployProgress((p: DeployProgress) => {
+      setDeploying((prev) => {
+        const next = { ...prev };
+        if (p.done) {
+          if (p.error) next[p.host_id] = `failed: ${p.error}`;
+          else delete next[p.host_id];
+        } else {
+          next[p.host_id] = p.line ? `${p.step}: ${p.line}` : `${p.step}…`;
+        }
+        return next;
+      });
+    }).then((fn) => (unlisten = fn));
+    return () => unlisten?.();
+  }, []);
 
   const open = (hostId: string) => {
     setSelected(hostId);
@@ -75,6 +96,12 @@ export function Fleet({ onNavigate }: FleetProps) {
             systemInfo={systemInfos[host.id] ?? null}
             series={byHost[host.id] ?? emptySeries()}
             onOpen={() => open(host.id)}
+            busyText={deploying[host.id]}
+            onDeployAgent={() => {
+              setDeploying((prev) => ({ ...prev, [host.id]: "deploying agent…" }));
+              deployAgent(host.id).catch(() => {});
+            }}
+            onInstallDeb={() => setInstallTarget({ id: host.id, name: host.name })}
             onRemove={async () => {
               await removeHost(host.id);
               useFleetStore.getState().dropHost(host.id);
@@ -86,6 +113,13 @@ export function Fleet({ onNavigate }: FleetProps) {
       </div>
 
       {wizardOpen && <AddHostWizard onClose={() => setWizardOpen(false)} />}
+      {installTarget && (
+        <InstallDebModal
+          hostId={installTarget.id}
+          hostName={installTarget.name}
+          onClose={() => setInstallTarget(null)}
+        />
+      )}
     </div>
   );
 }
