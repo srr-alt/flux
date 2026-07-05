@@ -2,6 +2,8 @@
 
 Everything GitHub-related for this project in one place.
 
+Local HTTP API reference: [docs/API.md](docs/API.md).
+
 ## Repositories
 
 | Repo | Visibility | Purpose |
