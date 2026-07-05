@@ -1,7 +1,75 @@
-# Tauri + React + Typescript
+# Flux
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+A fast Linux system monitor and fleet dashboard. One app to watch this
+machine and every other box you can SSH into — no server, no agents to
+babysit, no cloud.
 
-## Recommended IDE Setup
+Built with Tauri v2 (Rust) + React, so it idles light and draws charts at
+native speed. Styled after Linear: cool dark palette, Inter, hairline borders.
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## What it does
+
+- **Performance** — live CPU (per-core), memory, per-disk I/O, per-interface
+  network, and NVIDIA GPU charts with 90-sample history.
+- **Processes** — Task-Manager-style table: grouped by app, heat-shaded
+  CPU/memory/disk columns, search, kill/renice.
+- **Fleet** — monitor any Linux machine over SSH:
+  - *Agentless*: one batched `/proc` read per tick over the SSH channel.
+    Works on anything with `sh` — nothing installed on the target.
+  - *Agent mode*: one click uploads a small static binary
+    (`flux-agent`) for full process detail; auto-falls back to agentless
+    if it dies.
+  - Trust-on-first-use host keys, own ed25519 identity — your `~/.ssh`
+    is never touched. Passwords are used once to install the key, never
+    stored.
+- **Tools** — systemd services, startup apps, system cleaner, package
+  uninstaller, hardware info.
+- **HTTP API** — register hosts from scripts/CI: see [docs/API.md](docs/API.md).
+- **Usage logging** — record samples to CSV for later analysis.
+
+## Install (Ubuntu)
+
+Supported: 22.04 (jammy), 24.04 (noble), 26.04 (resolute).
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://ydvsahil03.github.io/flux-apt/pubkey.gpg | sudo gpg --dearmor --yes -o /etc/apt/keyrings/flux.gpg
+echo "deb [signed-by=/etc/apt/keyrings/flux.gpg] https://ydvsahil03.github.io/flux-apt $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/flux.list
+sudo apt update && sudo apt install flux
+```
+
+Updates arrive via normal `apt upgrade`. Standalone `.deb`s and the static
+`flux-agent-linux-amd64` binary are on the
+[releases page](https://github.com/ydvsahil03/vantage/releases).
+
+Ubuntu 20.04 is not supported (Tauri v2 needs webkit2gtk-4.1).
+
+## Build from source
+
+Prereqs: Rust stable, Node 20+, and the
+[Tauri v2 Linux deps](https://v2.tauri.app/start/prerequisites/) (webkit2gtk-4.1,
+gtk3, libayatana-appindicator, librsvg).
+
+```bash
+npm install
+npm run tauri dev      # run with hot reload
+npm run tauri build    # produce a .deb/binary for your distro
+```
+
+Release packaging for all supported distros runs in Docker:
+`packaging/release.sh <version>` (see [GITHUB.md](GITHUB.md) for the full
+release/apt pipeline).
+
+## Repository layout
+
+| Path | What |
+|------|------|
+| `src/` | React frontend (Tailwind v4, uPlot, Zustand) |
+| `src-tauri/` | Desktop app: local collectors, SSH remote monitoring, HTTP API |
+| `crates/flux-core` | Shared collectors + agent protocol (used by app and agent) |
+| `crates/flux-agent` | Headless JSON-lines agent binary deployed to remote hosts |
+| `packaging/` | Multi-distro Docker builds, apt repo (reprepro), release script |
+| `docs/API.md` | Local HTTP API reference |
+
+> Note: the repo is still named `vantage` (the app's old name); the app,
+> packages, and binaries are all `flux`.
