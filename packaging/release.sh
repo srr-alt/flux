@@ -32,7 +32,8 @@ sed -i "s/\"version\": \"$OLD\"/\"version\": \"$VERSION\"/" package.json src-tau
 sed -i -s "0,/^version = \"$OLD\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml crates/flux-core/Cargo.toml crates/flux-agent/Cargo.toml
 (cd src-tauri && cargo check -q)   # refresh Cargo.lock
 
-git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+git add package.json src-tauri/tauri.conf.json Cargo.lock \
+  src-tauri/Cargo.toml crates/flux-core/Cargo.toml crates/flux-agent/Cargo.toml
 git commit -m "release: v$VERSION"
 git tag "v$VERSION"
 
