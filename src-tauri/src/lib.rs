@@ -1,3 +1,4 @@
+mod api_server;
 pub mod commands_hosts;
 mod commands_modules;
 mod commands_monitor;
@@ -96,6 +97,7 @@ pub fn run() {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(monitor_loop(handle));
             commands_hosts::autoconnect_saved_hosts(app.handle());
+            api_server::start(app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())

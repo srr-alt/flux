@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   listHosts,
   onHostStatus,
@@ -26,6 +27,10 @@ export function useFleetEvents() {
 
     const subscribe = async () => {
       const subs = await Promise.all([
+        // Host list edited outside the UI (local HTTP API) — re-fetch.
+        listen("hosts://changed", async () => {
+          useHostsStore.getState().setHosts(await listHosts());
+        }),
         onHostStatus((event) => {
           useHostsStore
             .getState()

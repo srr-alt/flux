@@ -118,7 +118,7 @@ pub fn autoconnect_saved_hosts(app: &AppHandle) {
     }
 }
 
-fn views(state: &AppState) -> Vec<HostView> {
+pub fn views(state: &AppState) -> Vec<HostView> {
     let runtimes = state.host_runtimes.lock().unwrap();
     state
         .hosts
@@ -185,53 +185,45 @@ pub async fn test_host_connection(
 
 /// Add + provision in one step: TOFU-accept the host key, install the app
 /// public key over password auth, verify key auth works, persist, connect.
-/// The password lives only in this call's stack.
-#[tauri::command]
-pub async fn add_host(
-    app: AppHandle,
+/// The password lives only in this call's stack. Blocking — shared by the
+/// Tauri command and the local HTTP API.
+pub fn add_host_blocking(
+    app: &AppHandle,
     new: NewHost,
-    password: String,
+    password: &str,
 ) -> Result<HostView, String> {
-    let address = new.address.clone();
-    let port = new.port;
-    let username = new.username.clone();
     let key_path = {
-        let app = app.clone();
-        tauri::async_runtime::spawn_blocking(move || -> Result<PathBuf, String> {
-            let key_path = ensure_keypair(&app)?;
-            let known_hosts = known_hosts_path(&app);
+        let key_path = ensure_keypair(app)?;
+        let known_hosts = known_hosts_path(app);
 
-            let session = SshSession::connect(&address, port)?;
-            if matches!(
-                session.check_host_key(&known_hosts)?,
-                HostKeyStatus::Changed
-            ) {
-                return Err(
-                    "Host key changed since last seen — refusing. Remove the old entry from known_hosts if this is expected.".into(),
-                );
-            }
-            session.remember_host_key(&known_hosts)?;
-            session.auth_password(&username, &password)?;
+        let session = SshSession::connect(&new.address, new.port)?;
+        if matches!(
+            session.check_host_key(&known_hosts)?,
+            HostKeyStatus::Changed
+        ) {
+            return Err(
+                "Host key changed since last seen — refusing. Remove the old entry from known_hosts if this is expected.".into(),
+            );
+        }
+        session.remember_host_key(&known_hosts)?;
+        session.auth_password(&new.username, password)?;
 
-            // Idempotent authorized_keys append.
-            let pubkey = public_key(&app)?;
-            session.exec_capture(&format!(
-                "mkdir -p ~/.ssh && chmod 700 ~/.ssh && \
-                 grep -qxF '{pubkey}' ~/.ssh/authorized_keys 2>/dev/null || \
-                 printf '%s\\n' '{pubkey}' >> ~/.ssh/authorized_keys; \
-                 chmod 600 ~/.ssh/authorized_keys"
-            ))?;
+        // Idempotent authorized_keys append.
+        let pubkey = public_key(app)?;
+        session.exec_capture(&format!(
+            "mkdir -p ~/.ssh && chmod 700 ~/.ssh && \
+             grep -qxF '{pubkey}' ~/.ssh/authorized_keys 2>/dev/null || \
+             printf '%s\\n' '{pubkey}' >> ~/.ssh/authorized_keys; \
+             chmod 600 ~/.ssh/authorized_keys"
+        ))?;
 
-            // Verify the key actually works before saving anything.
-            let verify = SshSession::connect(&address, port)?;
-            verify.check_host_key(&known_hosts)?;
-            verify
-                .auth_key(&username, &key_path)
-                .map_err(|e| format!("key installed but key auth failed: {e}"))?;
-            Ok(key_path)
-        })
-        .await
-        .map_err(|e| e.to_string())??
+        // Verify the key actually works before saving anything.
+        let verify = SshSession::connect(&new.address, new.port)?;
+        verify.check_host_key(&known_hosts)?;
+        verify
+            .auth_key(&new.username, &key_path)
+            .map_err(|e| format!("key installed but key auth failed: {e}"))?;
+        key_path
     };
 
     let state = app.state::<AppState>();
@@ -250,9 +242,11 @@ pub async fn add_host(
     {
         let mut hosts = state.hosts.lock().unwrap();
         hosts.push(config.clone());
-        hosts::save(&data_dir(&app), &hosts)?;
+        hosts::save(&data_dir(app), &hosts)?;
     }
-    spawn_poller(&app, &state, config.clone());
+    spawn_poller(app, &state, config.clone());
+    // Nudge the frontend to re-fetch the host list (API adds bypass the UI).
+    let _ = tauri::Emitter::emit(app, "hosts://changed", ());
     Ok(HostView {
         id: config.id,
         name: config.name,
@@ -261,6 +255,17 @@ pub async fn add_host(
         username: config.username,
         running: true,
     })
+}
+
+#[tauri::command]
+pub async fn add_host(
+    app: AppHandle,
+    new: NewHost,
+    password: String,
+) -> Result<HostView, String> {
+    tauri::async_runtime::spawn_blocking(move || add_host_blocking(&app, new, &password))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -287,14 +292,23 @@ pub fn disconnect_host(state: State<'_, AppState>, host_id: HostId) {
     }
 }
 
-#[tauri::command]
-pub fn remove_host(app: AppHandle, state: State<'_, AppState>, host_id: HostId) -> Result<(), String> {
-    if let Some(runtime) = state.host_runtimes.lock().unwrap().remove(&host_id) {
+pub fn remove_host_blocking(app: &AppHandle, host_id: &str) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    if let Some(runtime) = state.host_runtimes.lock().unwrap().remove(host_id) {
         let _ = runtime.control_tx.send(Control::Stop);
     }
-    let mut hosts = state.hosts.lock().unwrap();
-    hosts.retain(|h| h.id != host_id);
-    hosts::save(&data_dir(&app), &hosts)
+    let result = {
+        let mut hosts = state.hosts.lock().unwrap();
+        hosts.retain(|h| h.id != host_id);
+        hosts::save(&data_dir(app), &hosts)
+    };
+    let _ = tauri::Emitter::emit(app, "hosts://changed", ());
+    result
+}
+
+#[tauri::command]
+pub fn remove_host(app: AppHandle, host_id: HostId) -> Result<(), String> {
+    remove_host_blocking(&app, &host_id)
 }
 
 fn with_control<T: Send + 'static>(
