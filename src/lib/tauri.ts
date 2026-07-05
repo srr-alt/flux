@@ -172,6 +172,10 @@ export function listHosts(): Promise<HostView[]> {
   return invoke("list_hosts");
 }
 
+export function getHostStatuses(): Promise<Record<string, HostStatusEvent>> {
+  return invoke("get_host_statuses");
+}
+
 export function testHostConnection(
   address: string,
   port: number,

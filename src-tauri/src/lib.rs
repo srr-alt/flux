@@ -82,6 +82,7 @@ pub fn run() {
             commands_settings::stop_usage_log,
             commands_settings::get_usage_log_status,
             commands_hosts::list_hosts,
+            commands_hosts::get_host_statuses,
             commands_hosts::test_host_connection,
             commands_hosts::add_host,
             commands_hosts::connect_host,

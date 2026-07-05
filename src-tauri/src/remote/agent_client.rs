@@ -14,10 +14,7 @@ use flux_core::protocol::{AgentEvent, AgentRequest};
 
 use super::poller::Control;
 use super::session::SshSession;
-use super::{
-    CollectionMode, HostStatus, HostStatusEvent, RemoteEvent, EVENT_HOST_STATUS,
-    EVENT_REMOTE_DISKS, EVENT_REMOTE_TICK,
-};
+use super::{CollectionMode, HostStatus, RemoteEvent, EVENT_REMOTE_DISKS, EVENT_REMOTE_TICK};
 
 pub const AGENT_REMOTE_PATH: &str = ".local/share/flux/flux-agent";
 
@@ -163,15 +160,13 @@ fn handle_event(
             version: _,
             system_info,
         } => {
-            let _ = app.emit(
-                EVENT_HOST_STATUS,
-                HostStatusEvent {
-                    host_id: host_id.to_string(),
-                    status: HostStatus::Connected {
-                        mode: CollectionMode::Agent,
-                    },
-                    system_info: Some(system_info),
+            super::publish_status(
+                app,
+                host_id,
+                HostStatus::Connected {
+                    mode: CollectionMode::Agent,
                 },
+                Some(system_info),
             );
         }
         AgentEvent::Tick(snapshot) => {

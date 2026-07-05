@@ -8,10 +8,7 @@ use flux_core::process::{ProcessInfo, ProcessQuery};
 use super::agentless::{self, AgentlessDeltas};
 use super::hosts::HostConfig;
 use super::session::{HostKeyStatus, SshSession};
-use super::{
-    CollectionMode, HostStatus, HostStatusEvent, RemoteEvent, EVENT_HOST_STATUS,
-    EVENT_REMOTE_DISKS, EVENT_REMOTE_TICK,
-};
+use super::{CollectionMode, HostStatus, RemoteEvent, EVENT_REMOTE_DISKS, EVENT_REMOTE_TICK};
 
 pub enum Control {
     Stop,
@@ -27,14 +24,7 @@ const BACKOFF_STEPS: &[u64] = &[1, 2, 5, 15, 30];
 const DEGRADE_AFTER: u32 = 3;
 
 fn emit_status(app: &AppHandle, host_id: &str, status: HostStatus) {
-    let _ = app.emit(
-        EVENT_HOST_STATUS,
-        HostStatusEvent {
-            host_id: host_id.to_string(),
-            status,
-            system_info: None,
-        },
-    );
+    super::publish_status(app, host_id, status, None);
 }
 
 /// Entry point for the per-host thread. Owns the SSH session, the delta
@@ -75,15 +65,13 @@ pub fn run(
 
         match agentless::statics(&session) {
             Ok(info) => {
-                let _ = app.emit(
-                    EVENT_HOST_STATUS,
-                    HostStatusEvent {
-                        host_id: host_id.clone(),
-                        status: HostStatus::Connected {
-                            mode: CollectionMode::Agentless,
-                        },
-                        system_info: Some(info),
+                super::publish_status(
+                    &app,
+                    &host_id,
+                    HostStatus::Connected {
+                        mode: CollectionMode::Agentless,
                     },
+                    Some(info),
                 );
             }
             Err(err) => {

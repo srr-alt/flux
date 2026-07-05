@@ -141,6 +141,15 @@ pub fn list_hosts(state: State<'_, AppState>) -> Vec<HostView> {
     views(&state)
 }
 
+/// Current status snapshot per host — lets a freshly loaded frontend seed
+/// itself instead of waiting for the next status transition event.
+#[tauri::command]
+pub fn get_host_statuses(
+    state: State<'_, AppState>,
+) -> std::collections::HashMap<HostId, crate::remote::HostStatusEvent> {
+    state.host_status_cache.lock().unwrap().clone()
+}
+
 /// Pre-add probe: connect, report fingerprint/TOFU state, try password
 /// auth if given, grab a few identity facts.
 #[tauri::command]
@@ -297,6 +306,7 @@ pub fn remove_host_blocking(app: &AppHandle, host_id: &str) -> Result<(), String
     if let Some(runtime) = state.host_runtimes.lock().unwrap().remove(host_id) {
         let _ = runtime.control_tx.send(Control::Stop);
     }
+    state.host_status_cache.lock().unwrap().remove(host_id);
     let result = {
         let mut hosts = state.hosts.lock().unwrap();
         hosts.retain(|h| h.id != host_id);

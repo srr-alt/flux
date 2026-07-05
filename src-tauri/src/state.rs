@@ -47,6 +47,9 @@ pub struct AppState {
     pub hosts: Mutex<Vec<crate::remote::hosts::HostConfig>>,
     /// Control handles for the per-host poller threads.
     pub host_runtimes: Mutex<HashMap<crate::remote::HostId, crate::commands_hosts::HostRuntime>>,
+    /// Last status event per host, so a reloaded frontend can seed itself.
+    pub host_status_cache:
+        Mutex<HashMap<crate::remote::HostId, crate::remote::HostStatusEvent>>,
 }
 
 impl AppState {
@@ -70,6 +73,7 @@ impl AppState {
             last_proc_refresh: Mutex::new(None),
             hosts: Mutex::new(Vec::new()),
             host_runtimes: Mutex::new(HashMap::new()),
+            host_status_cache: Mutex::new(HashMap::new()),
         }
     }
 }

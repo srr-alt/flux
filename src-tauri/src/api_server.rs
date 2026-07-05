@@ -16,7 +16,6 @@
 //! app SSH key using the one-time password, verify, connect) and returns the
 //! HostView JSON. A changed host key is refused with 409.
 
-use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
 
 use serde::Deserialize;

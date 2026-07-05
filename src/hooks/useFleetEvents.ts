@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
+  getHostStatuses,
   listHosts,
   onHostStatus,
   onRemoteDisks,
@@ -22,6 +23,19 @@ export function useFleetEvents() {
     listHosts()
       .then((hosts) => {
         if (!cancelled) useHostsStore.getState().setHosts(hosts);
+      })
+      .catch(() => {});
+
+    // Seed current statuses — status events only fire on transitions, so a
+    // freshly loaded window would otherwise show every host as offline.
+    getHostStatuses()
+      .then((statuses) => {
+        if (cancelled) return;
+        for (const event of Object.values(statuses)) {
+          useHostsStore
+            .getState()
+            .upsertStatus(event.host_id, event.status, event.system_info);
+        }
       })
       .catch(() => {});
 
