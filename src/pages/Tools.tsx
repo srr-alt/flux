@@ -21,12 +21,12 @@ export function Tools() {
   return (
     <div className="flex h-full flex-col">
       <div className="px-6 pt-5">
-        <div className="inline-flex rounded-lg border border-border bg-surface p-1">
+        <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setActive(t.id)}
-              className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              className={`rounded-[7px] px-3 py-1 text-[13px] transition-colors duration-100 ${
                 t.id === active
                   ? "bg-series-1/15 font-medium text-series-1"
                   : "text-ink-secondary hover:text-ink-primary"

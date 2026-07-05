@@ -45,16 +45,16 @@ export function AreaChart({
       },
       axes: [
         {
-          stroke: "#898781",
+          stroke: "#8a8f98",
           font: "11px system-ui",
           grid: { show: false },
           ticks: { show: false },
         },
         {
-          stroke: "#898781",
+          stroke: "#8a8f98",
           font: "11px system-ui",
           size: 58,
-          grid: { stroke: "#2c2c2a", width: 1 },
+          grid: { stroke: "#26282c", width: 1 },
           ticks: { show: false },
           values: (_u, splits) =>
             splits.map((v) =>

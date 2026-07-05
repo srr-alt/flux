@@ -35,9 +35,9 @@ export function TitleBar() {
   return (
     <div
       onMouseDown={onMouseDown}
-      className="flex h-9 shrink-0 items-center justify-between border-b border-border bg-surface pl-3"
+      className="flex h-9 shrink-0 items-center justify-between border-b border-border bg-page pl-3"
     >
-      <span className="pointer-events-none text-xs font-medium text-ink-muted">
+      <span className="pointer-events-none text-[11px] font-medium tracking-tight text-ink-muted">
         Flux
       </span>
       <div className="flex h-full">

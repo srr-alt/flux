@@ -191,14 +191,14 @@ function RailItem({ active, onClick, title, value, timestamps, series, yMax }: R
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-xl border p-3 text-left transition-colors ${
+      className={`w-full rounded-lg border p-3 text-left transition-colors duration-100 ${
         active
           ? "border-series-1/40 bg-series-1/10"
-          : "border-transparent hover:bg-white/5"
+          : "border-transparent hover:border-border hover:bg-white/[0.04]"
       }`}
     >
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="truncate text-sm font-medium text-ink-primary">{title}</span>
+        <span className="truncate text-[13px] font-medium text-ink-primary">{title}</span>
         <span className="shrink-0 text-xs tabular-nums text-ink-secondary">{value}</span>
       </div>
       <Sparkline

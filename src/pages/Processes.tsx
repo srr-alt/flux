@@ -303,9 +303,9 @@ export function Processes() {
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface">
-        <table className="w-full text-sm">
+        <table className="w-full text-[13px]">
           <thead className="sticky top-0 z-10 bg-surface">
-            <tr className="text-left text-xs text-ink-muted">
+            <tr className="text-left text-[10px] uppercase tracking-wider text-ink-muted">
               <th
                 onClick={() => onHeaderClick("name")}
                 className="cursor-pointer select-none px-3 pb-2 pt-3 align-bottom font-medium hover:text-ink-primary"

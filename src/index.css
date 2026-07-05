@@ -1,25 +1,31 @@
+@import "@fontsource-variable/inter";
 @import "tailwindcss";
 
+/* Linear-inspired cool dark theme: near-black page, layered panels,
+   hairline borders, indigo accent, Inter with tight tracking. */
 @theme {
-  --color-surface: #1a1a19;
-  --color-page: #0d0d0d;
-  --color-ink-primary: #ffffff;
-  --color-ink-secondary: #c3c2b7;
-  --color-ink-muted: #898781;
-  --color-gridline: #2c2c2a;
-  --color-border: rgba(255, 255, 255, 0.1);
+  --color-page: #08090a;
+  --color-surface: #101113;
+  --color-raised: #17181b;
+  --color-ink-primary: #f7f8f8;
+  --color-ink-secondary: #c9cdd3;
+  --color-ink-muted: #8a8f98;
+  --color-gridline: #26282c;
+  --color-border: rgba(255, 255, 255, 0.08);
 
-  --color-series-1: #3987e5;
+  /* series-1 doubles as the UI accent (Linear indigo); chart line colors
+     are hardcoded per-chart and stay unchanged. */
+  --color-series-1: #6e79d6;
   --color-series-2: #199e70;
   --color-series-3: #c98500;
   --color-series-5: #9085e9;
   --color-series-7: #d55181;
   --color-series-8: #d95926;
 
-  --color-status-good: #0ca30c;
-  --color-status-warning: #fab219;
+  --color-status-good: #2da44e;
+  --color-status-warning: #d4a72c;
   --color-status-serious: #ec835a;
-  --color-status-critical: #d03b3b;
+  --color-status-critical: #e5534b;
 }
 
 html {
@@ -31,8 +37,49 @@ body {
   background-color: var(--color-page);
   color: var(--color-ink-primary);
   font-family:
+    "Inter Variable",
+    "Inter",
     system-ui,
     -apple-system,
     "Segoe UI",
     sans-serif;
+  letter-spacing: -0.011em;
+  font-feature-settings: "cv05", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Hairline scrollbars that stay out of the way. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::selection {
+  background: rgba(110, 121, 214, 0.35);
+}
+
+:focus-visible {
+  outline: 2px solid rgba(110, 121, 214, 0.7);
+  outline-offset: 1px;
+}
+
+button {
+  letter-spacing: inherit;
 }
