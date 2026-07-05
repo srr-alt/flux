@@ -1,9 +1,10 @@
-import { Monitor, Server, Trash2 } from "lucide-react";
+import { Cpu, HardDrive, Monitor, Server, Trash2 } from "lucide-react";
 import { Sparkline } from "../charts/Sparkline";
 import { Meter } from "../charts/Meter";
 import {
+  formatBytes,
   formatBytesPerSec,
-  formatPercent,
+  formatKb,
   formatUptime,
 } from "../../lib/format";
 import type { HostSeries } from "../../state/fleetStore";
@@ -24,33 +25,49 @@ interface HostTileProps {
   busyText?: string;
 }
 
-function statusColor(status: HostStatus | undefined, isLocal: boolean): string {
-  if (isLocal) return "bg-status-good";
+function statusPill(
+  status: HostStatus | undefined,
+  isLocal: boolean,
+): { label: string; cls: string; pulse: boolean } {
+  if (isLocal)
+    return {
+      label: "local",
+      cls: "bg-status-good/15 text-status-good",
+      pulse: false,
+    };
   switch (status?.state) {
     case "connected":
-      return "bg-status-good";
+      return status.mode === "agent"
+        ? { label: "agent", cls: "bg-series-1/15 text-series-1", pulse: false }
+        : {
+            label: "ssh",
+            cls: "bg-status-good/15 text-status-good",
+            pulse: false,
+          };
     case "connecting":
-      return "bg-status-warning";
+      return {
+        label: "connecting",
+        cls: "bg-status-warning/15 text-status-warning",
+        pulse: true,
+      };
     case "degraded":
-      return "bg-status-serious";
-    default:
-      return "bg-status-critical";
-  }
-}
-
-function statusLabel(status: HostStatus | undefined, isLocal: boolean): string {
-  if (isLocal) return "this machine";
-  switch (status?.state) {
-    case "connected":
-      return status.mode === "agent" ? "agent" : "ssh";
-    case "connecting":
-      return "connecting…";
-    case "degraded":
-      return "degraded";
+      return {
+        label: "degraded",
+        cls: "bg-status-serious/15 text-status-serious",
+        pulse: true,
+      };
     case "error":
-      return "error";
+      return {
+        label: "error",
+        cls: "bg-status-critical/15 text-status-critical",
+        pulse: false,
+      };
     default:
-      return "offline";
+      return {
+        label: "offline",
+        cls: "bg-white/5 text-ink-muted",
+        pulse: false,
+      };
   }
 }
 
@@ -67,11 +84,12 @@ export function HostTile({
   busyText,
 }: HostTileProps) {
   const latest = series.latest;
+  const memUsedKb = latest
+    ? latest.memory.total_kb - latest.memory.available_kb
+    : 0;
   const memPct =
     latest && latest.memory.total_kb > 0
-      ? ((latest.memory.total_kb - latest.memory.available_kb) /
-          latest.memory.total_kb) *
-        100
+      ? (memUsedKb / latest.memory.total_kb) * 100
       : 0;
   const netDown = latest
     ? latest.network.reduce((sum, i) => sum + i.rx_bytes_per_sec, 0)
@@ -79,72 +97,116 @@ export function HostTile({
   const netUp = latest
     ? latest.network.reduce((sum, i) => sum + i.tx_bytes_per_sec, 0)
     : 0;
+  const rootMount = series.disks?.mounts.find((m) => m.mount_point === "/");
+  const diskPct = rootMount
+    ? ((rootMount.total_bytes - rootMount.available_bytes) /
+        rootMount.total_bytes) *
+      100
+    : null;
   const offline = !isLocal && status?.state !== "connected";
+  const pill = statusPill(status, isLocal);
   const Icon = isLocal ? Monitor : Server;
+  const cpuNow = latest?.cpu.global_usage_pct;
 
   return (
     <div
-      className={`group relative flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition hover:border-white/25 ${
-        offline ? "opacity-60" : ""
+      className={`group relative flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-surface p-4 transition-all duration-150 hover:-translate-y-0.5 hover:border-white/20 hover:shadow-lg hover:shadow-black/30 ${
+        offline ? "opacity-55 saturate-50" : ""
       }`}
       onClick={onOpen}
     >
+      {/* header */}
       <div className="flex items-center gap-2">
-        <Icon size={15} className="shrink-0 text-ink-muted" />
-        <span className="truncate text-sm font-medium text-ink-primary">
-          {name}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/5">
+          <Icon size={14} className="text-ink-secondary" />
         </span>
-        <span className="ml-auto flex items-center gap-1.5 text-[11px] text-ink-muted">
-          <span
-            className={`h-2 w-2 rounded-full ${statusColor(status, isLocal)}`}
-          />
-          {statusLabel(status, isLocal)}
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold leading-tight text-ink-primary">
+            {name}
+          </div>
+          <div className="truncate text-[11px] leading-tight text-ink-muted">
+            {systemInfo
+              ? systemInfo.os_pretty_name
+              : status?.state === "error"
+                ? status.message
+                : "waiting for connection…"}
+          </div>
+        </div>
+        <span
+          className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${pill.cls} ${
+            pill.pulse ? "animate-pulse" : ""
+          }`}
+        >
+          {pill.label}
         </span>
       </div>
 
-      <div className="truncate text-xs text-ink-muted">
-        {systemInfo
-          ? `${systemInfo.os_pretty_name} · up ${formatUptime(systemInfo.uptime_secs)}`
-          : status?.state === "error"
-            ? status.message
-            : "—"}
-      </div>
-
-      <div className="h-9">
+      {/* cpu sparkline with live value */}
+      <div className="relative rounded-lg bg-black/20 px-2 pt-2">
+        <div className="pointer-events-none absolute right-2 top-1.5 z-10 text-right">
+          <span className="text-lg font-semibold tabular-nums leading-none text-ink-primary">
+            {cpuNow !== undefined ? cpuNow.toFixed(0) : "–"}
+            <span className="text-[10px] font-normal text-ink-muted">%</span>
+          </span>
+          <div className="text-[9px] uppercase tracking-wide text-ink-muted">
+            cpu
+          </div>
+        </div>
         <Sparkline
           timestamps={series.timestamps}
-          series={[
-            {
-              values: series.cpuHistory,
-              color: "#3987e5",
-              label: "CPU",
-            },
-          ]}
+          series={[{ values: series.cpuHistory, color: "#3987e5", label: "CPU" }]}
           yMax={100}
-          height={36}
+          height={44}
         />
       </div>
 
-      <div className="flex items-center justify-between text-xs text-ink-secondary">
-        <span>
-          CPU{" "}
-          {latest ? formatPercent(latest.cpu.global_usage_pct) : "—"}
+      {/* meters */}
+      <div className="flex flex-col gap-2">
+        <Meter
+          ratio={memPct / 100}
+          color="#9085e9"
+          label="Memory"
+          detail={
+            latest ? `${formatKb(memUsedKb)} · ${memPct.toFixed(0)}%` : "—"
+          }
+        />
+        {diskPct !== null && rootMount && (
+          <Meter
+            ratio={diskPct / 100}
+            color="#c98500"
+            label="Disk /"
+            detail={`${formatBytes(rootMount.total_bytes - rootMount.available_bytes)} · ${diskPct.toFixed(0)}%`}
+          />
+        )}
+      </div>
+
+      {/* facts row */}
+      <div className="grid grid-cols-3 gap-2 text-[11px] text-ink-muted">
+        <span className="flex items-center gap-1 truncate">
+          <Cpu size={11} className="shrink-0" />
+          {systemInfo ? `${systemInfo.logical_cores}× · load ${latest ? latest.cpu.load_avg_1.toFixed(2) : "—"}` : "—"}
         </span>
-        <span>
-          ↓ {formatBytesPerSec(netDown)} ↑ {formatBytesPerSec(netUp)}
+        <span className="truncate text-center">
+          {systemInfo ? `up ${formatUptime(systemInfo.uptime_secs)}` : ""}
+        </span>
+        <span className="truncate text-right tabular-nums">
+          ↓{formatBytesPerSec(netDown)} ↑{formatBytesPerSec(netUp)}
         </span>
       </div>
-      <Meter ratio={memPct / 100} color="#9085e9" label="Memory" detail={formatPercent(memPct)} />
 
+      {/* actions */}
       {busyText ? (
-        <div className="truncate text-[11px] text-status-warning">{busyText}</div>
+        <div className="flex items-center gap-1.5 truncate text-[11px] text-status-warning">
+          <HardDrive size={11} className="shrink-0 animate-pulse" />
+          {busyText}
+        </div>
       ) : (
         !isLocal &&
         status?.state === "connected" && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
             {status.mode === "agentless" && onDeployAgent && (
               <button
-                className="rounded bg-series-1/15 px-2 py-1 text-[11px] text-series-1 hover:bg-series-1/25"
+                className="rounded-md bg-series-1/15 px-2 py-1 text-[11px] font-medium text-series-1 hover:bg-series-1/25"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeployAgent();
@@ -156,7 +218,7 @@ export function HostTile({
             )}
             {onInstallDeb && (
               <button
-                className="rounded bg-white/5 px-2 py-1 text-[11px] text-ink-secondary hover:bg-white/10"
+                className="rounded-md bg-white/5 px-2 py-1 text-[11px] text-ink-secondary hover:bg-white/10"
                 onClick={(e) => {
                   e.stopPropagation();
                   onInstallDeb();
@@ -172,7 +234,7 @@ export function HostTile({
 
       {onRemove && (
         <button
-          className="absolute right-2 top-2 hidden rounded p-1 text-ink-muted hover:bg-status-critical/20 hover:text-status-critical group-hover:block"
+          className="absolute bottom-2.5 right-2.5 hidden rounded-md p-1 text-ink-muted hover:bg-status-critical/20 hover:text-status-critical group-hover:block"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
