@@ -10,6 +10,8 @@ import {
   formatUptime,
 } from "../lib/format";
 import { getCpuDetails } from "../lib/tauri";
+import { chartColors, themeColor } from "../lib/theme";
+import { LoadingState } from "../components/ui/LoadingState";
 import { useMonitorStore } from "../state/monitorStore";
 import {
   useSelectedHostMetrics,
@@ -18,18 +20,11 @@ import {
 import { HostSwitcher } from "../components/hosts/HostSwitcher";
 import type { CpuDetails as CpuDetailsType } from "../types/monitor";
 
-const COLORS = {
-  cpu: "#3987e5",
-  memory: "#9085e9",
-  disk: "#c98500",
-  net: "#199e70",
-  netTx: "#d55181",
-  gpu: "#d95926",
-};
+const COLORS = chartColors;
 
 function coreColor(pct: number): string {
-  if (pct >= 90) return "#d03b3b";
-  if (pct >= 70) return "#fab219";
+  if (pct >= 90) return themeColor("statusCritical");
+  if (pct >= 70) return themeColor("statusWarning");
   return COLORS.cpu;
 }
 
@@ -61,10 +56,10 @@ export function Performance() {
 
   if (!latest) {
     return (
-      <div className="flex h-full items-center justify-center text-ink-muted">
+      <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <HostSwitcher />
-          <span>Collecting first sample…</span>
+          <LoadingState label="Collecting first sample…" />
         </div>
       </div>
     );
@@ -225,7 +220,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function DetailHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-4 flex items-baseline justify-between gap-4">
-      <h1 className="text-xl font-semibold text-ink-primary">{title}</h1>
+      <h1 className="text-lg font-semibold text-ink-primary">{title}</h1>
       {subtitle && <span className="truncate text-sm text-ink-muted">{subtitle}</span>}
     </div>
   );

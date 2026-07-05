@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, RefreshCw, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, Search, SearchX } from "lucide-react";
 import { getHardwareInfo } from "../lib/tauri";
+import { EmptyState } from "../components/ui/EmptyState";
+import { LoadingState } from "../components/ui/LoadingState";
 import type { InfoSection } from "../types/monitor";
 
 function SectionCard({
@@ -101,9 +103,13 @@ export function HardwareInfo() {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
         {filtered === null ? (
-          <span className="text-sm text-ink-muted">Reading hardware…</span>
+          <LoadingState label="Reading hardware…" />
         ) : filtered.length === 0 ? (
-          <span className="text-sm text-ink-muted">No matches.</span>
+          <EmptyState
+            icon={SearchX}
+            title="No matches"
+            hint={search ? `Nothing matches “${search}”.` : undefined}
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {filtered.map((s) => (

@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { SearchX } from "lucide-react";
 import { listServices, serviceAction } from "../lib/tauri";
+import { EmptyState } from "../components/ui/EmptyState";
+import { LoadingState } from "../components/ui/LoadingState";
 import type { ServiceInfo } from "../types/monitor";
 
 type Verb = "start" | "stop" | "restart" | "enable" | "disable";
@@ -72,7 +75,14 @@ export function Services() {
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface">
         {loading ? (
-          <div className="p-6 text-sm text-ink-muted">Loading services…</div>
+          <LoadingState label="Loading services…" />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={SearchX}
+            title="No services match"
+            hint={search ? `Nothing matches “${search}”.` : undefined}
+            className="m-4 border-0"
+          />
         ) : (
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-surface">

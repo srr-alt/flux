@@ -7,6 +7,7 @@ import {
   formatKb,
   formatUptime,
 } from "../../lib/format";
+import { chartColors } from "../../lib/theme";
 import type { HostSeries } from "../../state/fleetStore";
 import type { HostStatus } from "../../types/hosts";
 import type { SystemInfo } from "../../types/monitor";
@@ -154,7 +155,7 @@ export function HostTile({
         </div>
         <Sparkline
           timestamps={series.timestamps}
-          series={[{ values: series.cpuHistory, color: "#3987e5", label: "CPU" }]}
+          series={[{ values: series.cpuHistory, color: chartColors.cpu, label: "CPU" }]}
           yMax={100}
           height={44}
         />
@@ -164,7 +165,7 @@ export function HostTile({
       <div className="flex flex-col gap-2">
         <Meter
           ratio={memPct / 100}
-          color="#9085e9"
+          color={chartColors.memory}
           label="Memory"
           detail={
             latest ? `${formatKb(memUsedKb)} · ${memPct.toFixed(0)}%` : "—"
@@ -173,7 +174,7 @@ export function HostTile({
         {diskPct !== null && rootMount && (
           <Meter
             ratio={diskPct / 100}
-            color="#c98500"
+            color={chartColors.disk}
             label="Disk /"
             detail={`${formatBytes(rootMount.total_bytes - rootMount.available_bytes)} · ${diskPct.toFixed(0)}%`}
           />

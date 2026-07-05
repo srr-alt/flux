@@ -13,12 +13,14 @@
   --color-gridline: #26282c;
   --color-border: rgba(255, 255, 255, 0.08);
 
-  /* series-1 doubles as the UI accent (Linear indigo); chart line colors
-     are hardcoded per-chart and stay unchanged. */
+  /* series-1 doubles as the UI accent (Linear indigo). Charts read these
+     via src/lib/theme.ts — keep hex 6-digit (withAlpha depends on it). */
   --color-series-1: #6e79d6;
   --color-series-2: #199e70;
   --color-series-3: #c98500;
+  --color-series-4: #3987e5;
   --color-series-5: #9085e9;
+  --color-series-6: #2da44e;
   --color-series-7: #d55181;
   --color-series-8: #d95926;
 

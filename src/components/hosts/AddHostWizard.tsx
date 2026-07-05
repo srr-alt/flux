@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { X } from "lucide-react";
 import { addHost, forgetHostKey, listHosts, testHostConnection } from "../../lib/tauri";
+import { Modal } from "../ui/Modal";
 import { useHostsStore } from "../../state/hostsStore";
 import type { TestResult } from "../../types/hosts";
 
@@ -71,21 +71,13 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-[440px] rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink-primary">
-            Add remote host
-          </h2>
-          <button
-            className="rounded p-1 text-ink-muted hover:bg-white/10"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={15} />
-          </button>
-        </div>
-
+    <Modal
+      title="Add remote host"
+      onClose={onClose}
+      width="w-[440px]"
+      dismissable={step !== "provisioning"}
+      showClose
+    >
         {step === "form" && (
           <form
             className="flex flex-col gap-3"
@@ -222,7 +214,6 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
             Host added.
           </p>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cleanCategory, scanCleanable } from "../lib/tauri";
+import { LoadingState } from "../components/ui/LoadingState";
 import { formatBytes } from "../lib/format";
 import type { CleanCategory } from "../types/monitor";
 
@@ -77,6 +78,10 @@ export function Cleaner() {
         </div>
       )}
 
+      {scanning && categories.length === 0 && (
+        <LoadingState label="Scanning for cleanable files…" />
+      )}
+
       <div className="space-y-2">
         {categories.map((cat) => (
           <label
@@ -88,7 +93,7 @@ export function Cleaner() {
               checked={selected.has(cat.id)}
               onChange={() => toggle(cat.id)}
               disabled={cat.size_bytes === 0}
-              className="h-4 w-4 accent-[#3987e5]"
+              className="h-4 w-4 accent-series-4"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

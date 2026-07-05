@@ -86,7 +86,7 @@ function LoggingCard() {
           onClick={toggle}
           className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             active
-              ? "bg-red-500/15 text-red-400 hover:bg-red-500/25"
+              ? "bg-status-critical/15 text-status-critical hover:bg-status-critical/25"
               : "bg-series-1/15 text-series-1 hover:bg-series-1/25"
           }`}
         >
@@ -111,7 +111,7 @@ function LoggingCard() {
           {status.path}
         </p>
       )}
-      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-xs text-status-critical">{error}</p>}
     </div>
   );
 }

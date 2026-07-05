@@ -5,6 +5,9 @@ import {
   removeStartupApp,
   setStartupEnabled,
 } from "../lib/tauri";
+import { Power } from "lucide-react";
+import { Modal } from "../components/ui/Modal";
+import { EmptyState } from "../components/ui/EmptyState";
 import type { StartupApp } from "../types/monitor";
 
 export function Startup() {
@@ -88,25 +91,22 @@ export function Startup() {
           </div>
         ))}
         {apps.length === 0 && (
-          <div className="text-sm text-ink-muted">No startup applications found.</div>
+          <EmptyState
+            icon={Power}
+            title="No startup applications"
+            hint="Apps added here launch automatically when you log in."
+          />
         )}
       </div>
 
       {showAdd && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowAdd(false)}
-        >
-          <div
-            className="w-96 rounded-lg border border-border bg-surface p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base font-semibold text-ink-primary">Add startup app</h2>
+        <Modal title="Add startup app" onClose={() => setShowAdd(false)}>
             <input
+              autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Name"
-              className="mt-3 w-full rounded-md border border-border bg-page px-3 py-1.5 text-sm text-ink-primary placeholder:text-ink-muted focus:border-series-1 focus:outline-none"
+              className="w-full rounded-md border border-border bg-page px-3 py-1.5 text-sm text-ink-primary placeholder:text-ink-muted focus:border-series-1 focus:outline-none"
             />
             <input
               value={newExec}
@@ -133,8 +133,7 @@ export function Startup() {
                 Add
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

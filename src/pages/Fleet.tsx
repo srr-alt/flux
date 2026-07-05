@@ -123,7 +123,7 @@ export function Fleet({ onNavigate }: FleetProps) {
   }, [hosts, statuses, byHost, localSeries.latest]);
 
   return (
-    <div className="p-5">
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-ink-primary">Fleet</h1>

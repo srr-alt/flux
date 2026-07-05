@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
+import { AXIS_FONT, themeColor } from "../../lib/theme";
 
 export interface AreaSeries {
   values: number[];
@@ -45,16 +46,16 @@ export function AreaChart({
       },
       axes: [
         {
-          stroke: "#8a8f98",
-          font: "11px system-ui",
+          stroke: themeColor("inkMuted"),
+          font: AXIS_FONT,
           grid: { show: false },
           ticks: { show: false },
         },
         {
-          stroke: "#8a8f98",
-          font: "11px system-ui",
+          stroke: themeColor("inkMuted"),
+          font: AXIS_FONT,
           size: 58,
-          grid: { stroke: "#26282c", width: 1 },
+          grid: { stroke: themeColor("gridline"), width: 1 },
           ticks: { show: false },
           values: (_u, splits) =>
             splits.map((v) =>

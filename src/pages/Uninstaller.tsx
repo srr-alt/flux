@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { SearchX } from "lucide-react";
 import { listPackages, uninstallPackage } from "../lib/tauri";
+import { EmptyState } from "../components/ui/EmptyState";
+import { LoadingState } from "../components/ui/LoadingState";
 import { formatKb } from "../lib/format";
+import { Modal } from "../components/ui/Modal";
 import type { PackageInfo } from "../types/monitor";
 
 export function Uninstaller() {
@@ -76,7 +80,14 @@ export function Uninstaller() {
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface">
         {loading ? (
-          <div className="p-6 text-sm text-ink-muted">Loading packages…</div>
+          <LoadingState label="Loading packages…" />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={SearchX}
+            title="No packages match"
+            hint={search ? `Nothing matches “${search}”.` : undefined}
+            className="m-4 border-0"
+          />
         ) : (
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-surface">
@@ -118,18 +129,12 @@ export function Uninstaller() {
       </div>
 
       {confirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => !busy && setConfirm(null)}
+        <Modal
+          title={`Uninstall ${confirm.name}?`}
+          onClose={() => setConfirm(null)}
+          dismissable={!busy}
         >
-          <div
-            className="w-96 rounded-lg border border-border bg-surface p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base font-semibold text-ink-primary">
-              Uninstall {confirm.name}?
-            </h2>
-            <p className="mt-2 text-sm text-ink-secondary">
+            <p className="text-sm text-ink-secondary">
               {confirm.summary} ({formatKb(confirm.installed_size_kb)})
             </p>
             <p className="mt-2 text-xs text-ink-muted">
@@ -152,8 +157,7 @@ export function Uninstaller() {
                 {busy ? "Removing…" : "Uninstall"}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

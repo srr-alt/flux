@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { ChevronDown, ChevronRight, Layers, SearchX } from "lucide-react";
 import {
   killProcess,
   killRemoteProcess,
@@ -10,6 +10,10 @@ import {
 import { HostSwitcher } from "../components/hosts/HostSwitcher";
 import { useSelectedHostMetrics, useSelectedSystemInfo } from "../hooks/useHostMetrics";
 import { formatBytes, formatBytesPerSec, formatPercent } from "../lib/format";
+import { themeColor, withAlpha } from "../lib/theme";
+import { Modal } from "../components/ui/Modal";
+import { EmptyState } from "../components/ui/EmptyState";
+import { LoadingState } from "../components/ui/LoadingState";
 import type { ProcessInfo } from "../types/monitor";
 
 type SortKey = "name" | "user" | "cpu" | "mem" | "disk";
@@ -29,7 +33,7 @@ const diskRate = (p: ProcessInfo) =>
 function heat(frac: number): string | undefined {
   const clamped = Math.min(1, Math.max(0, frac));
   if (clamped < 0.02) return undefined;
-  return `rgba(57, 135, 229, ${(0.06 + clamped * 0.34).toFixed(3)})`;
+  return withAlpha(themeColor("series4"), 0.06 + clamped * 0.34);
 }
 
 function sortValue(g: Group, key: SortKey): number | string {
@@ -64,6 +68,7 @@ export function Processes() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [confirmKill, setConfirmKill] = useState<ProcessInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const { latest, disks, isLocal, hostId } = useSelectedHostMetrics();
   const systemInfo = useSelectedSystemInfo();
@@ -80,6 +85,7 @@ export function Processes() {
         ? await listProcesses(query)
         : await listRemoteProcesses(hostId, query);
       setProcesses(result);
+      setLoading(false);
     } catch {
       // transient failures (e.g. mid-navigation) — keep the last list
     }
@@ -88,6 +94,7 @@ export function Processes() {
   // Poll only while this page is mounted; restart on host switch.
   useEffect(() => {
     setProcesses([]);
+    setLoading(true);
     refresh();
     const id = setInterval(refresh, 2000);
     return () => clearInterval(id);
@@ -303,6 +310,16 @@ export function Processes() {
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface">
+        {loading ? (
+          <LoadingState label="Loading processes…" />
+        ) : groups.length === 0 ? (
+          <EmptyState
+            icon={SearchX}
+            title="No processes match"
+            hint={search ? `Nothing matches “${search}”.` : undefined}
+            className="m-4 border-0"
+          />
+        ) : (
         <table className="w-full text-[13px]">
           <thead className="sticky top-0 z-10 bg-surface">
             <tr className="text-left text-[10px] uppercase tracking-wider text-ink-muted">
@@ -381,21 +398,15 @@ export function Processes() {
             })}
           </tbody>
         </table>
+        )}
       </div>
 
       {confirmKill && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setConfirmKill(null)}
+        <Modal
+          title={`End ${confirmKill.name} (PID ${confirmKill.pid})?`}
+          onClose={() => setConfirmKill(null)}
         >
-          <div
-            className="w-96 rounded-lg border border-border bg-surface p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base font-semibold text-ink-primary">
-              End {confirmKill.name} (PID {confirmKill.pid})?
-            </h2>
-            <p className="mt-2 break-all text-xs text-ink-muted">
+            <p className="break-all text-xs text-ink-muted">
               {confirmKill.cmd || confirmKill.name}
             </p>
             <div className="mt-4 flex justify-end gap-2">
@@ -418,8 +429,7 @@ export function Processes() {
                 Terminate
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

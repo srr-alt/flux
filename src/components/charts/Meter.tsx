@@ -1,3 +1,5 @@
+import { themeColor } from "../../lib/theme";
+
 interface MeterProps {
   /** 0..1 */
   ratio: number;
@@ -6,8 +8,9 @@ interface MeterProps {
   detail?: string;
 }
 
-export function Meter({ ratio, color = "#3987e5", label, detail }: MeterProps) {
+export function Meter({ ratio, color, label, detail }: MeterProps) {
   const clamped = Math.max(0, Math.min(1, ratio));
+  const barColor = color ?? themeColor("series4");
   return (
     <div>
       {(label || detail) && (
@@ -19,7 +22,7 @@ export function Meter({ ratio, color = "#3987e5", label, detail }: MeterProps) {
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-gridline">
         <div
           className="h-full rounded-full transition-[width] duration-300"
-          style={{ width: `${clamped * 100}%`, backgroundColor: color }}
+          style={{ width: `${clamped * 100}%`, backgroundColor: barColor }}
         />
       </div>
     </div>

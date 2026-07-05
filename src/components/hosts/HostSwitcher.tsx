@@ -10,14 +10,25 @@ export function HostSwitcher() {
   const setSelected = useHostsStore((s) => s.setSelected);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
     window.addEventListener("mousedown", close);
-    return () => window.removeEventListener("mousedown", close);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
 
   if (hosts.length === 0) return null;
@@ -40,15 +51,22 @@ export function HostSwitcher() {
   return (
     <div className="relative" ref={ref}>
       <button
+        ref={triggerRef}
         className="flex items-center gap-2 rounded border border-border bg-surface px-2.5 py-1 text-xs text-ink-secondary hover:border-white/25"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
       >
         <span className={`h-1.5 w-1.5 rounded-full ${dot(selected)}`} />
         {selectedName}
         <ChevronDown size={12} />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-40 mt-1 min-w-48 rounded border border-border bg-surface py-1 shadow-lg">
+        <div
+          className="absolute left-0 top-full z-40 mt-1 min-w-48 rounded border border-border bg-surface py-1 shadow-lg"
+          role="listbox"
+          aria-label="Select host"
+        >
           <Item
             icon={Monitor}
             label="This machine"
@@ -97,6 +115,8 @@ function Item({
         active ? "text-series-1" : "text-ink-secondary"
       }`}
       onClick={onClick}
+      role="option"
+      aria-selected={active}
     >
       <Icon size={13} className="shrink-0" />
       <span className="truncate">{label}</span>
