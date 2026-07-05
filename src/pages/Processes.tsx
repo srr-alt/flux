@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Layers, SearchX } from "lucide-react";
 import {
+  getProcessDetail,
   killProcess,
   killRemoteProcess,
   listProcesses,
@@ -9,12 +10,13 @@ import {
 } from "../lib/tauri";
 import { HostSwitcher } from "../components/hosts/HostSwitcher";
 import { useSelectedHostMetrics, useSelectedSystemInfo } from "../hooks/useHostMetrics";
-import { formatBytes, formatBytesPerSec, formatPercent } from "../lib/format";
+import { formatBytes, formatBytesPerSec, formatKb, formatPercent } from "../lib/format";
 import { themeColor, withAlpha } from "../lib/theme";
 import { Modal } from "../components/ui/Modal";
+import { Drawer } from "../components/ui/Drawer";
 import { EmptyState } from "../components/ui/EmptyState";
 import { LoadingState } from "../components/ui/LoadingState";
-import type { ProcessInfo } from "../types/monitor";
+import type { ProcessDetail, ProcessInfo } from "../types/monitor";
 
 type SortKey = "name" | "user" | "cpu" | "mem" | "disk";
 
@@ -67,6 +69,7 @@ export function Processes() {
   const [grouped, setGrouped] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [confirmKill, setConfirmKill] = useState<ProcessInfo | null>(null);
+  const [detail, setDetail] = useState<ProcessInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -95,6 +98,7 @@ export function Processes() {
   useEffect(() => {
     setProcesses([]);
     setLoading(true);
+    setDetail(null);
     refresh();
     const id = setInterval(refresh, 2000);
     return () => clearInterval(id);
@@ -253,7 +257,10 @@ export function Processes() {
   const leafRow = (proc: ProcessInfo, indented: boolean) => (
     <tr
       key={proc.pid}
-      className="group border-t border-border text-ink-secondary hover:bg-white/5"
+      onClick={() => isLocal && setDetail(proc)}
+      className={`group border-t border-border text-ink-secondary hover:bg-white/5 ${
+        isLocal ? "cursor-pointer" : ""
+      }`}
     >
       <td className="max-w-0 truncate px-3 py-1.5 text-ink-primary" title={proc.cmd}>
         <span className={indented ? "pl-9" : "pl-5"}>
@@ -401,6 +408,18 @@ export function Processes() {
         )}
       </div>
 
+      {detail && (
+        <Drawer
+          title={`${detail.name} · PID ${detail.pid}`}
+          onClose={() => setDetail(null)}
+        >
+          <ProcessDetailPanel
+            proc={detail}
+            onKill={() => setConfirmKill(detail)}
+          />
+        </Drawer>
+      )}
+
       {confirmKill && (
         <Modal
           title={`End ${confirmKill.name} (PID ${confirmKill.pid})?`}
@@ -431,6 +450,165 @@ export function Processes() {
             </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function ProcessDetailPanel({
+  proc,
+  onKill,
+}: {
+  proc: ProcessInfo;
+  onKill: () => void;
+}) {
+  const [detail, setDetail] = useState<ProcessDetail | null>(null);
+  const [gone, setGone] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDetail(null);
+    setGone(false);
+    const load = () =>
+      getProcessDetail(proc.pid)
+        .then((d) => {
+          if (!cancelled) setDetail(d);
+        })
+        .catch(() => {
+          if (!cancelled) setGone(true);
+        });
+    load();
+    const id = setInterval(load, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [proc.pid]);
+
+  if (gone) {
+    return <p className="text-sm text-ink-muted">Process exited.</p>;
+  }
+  if (!detail) {
+    return <LoadingState label="Reading /proc…" />;
+  }
+
+  const facts: [string, string][] = [
+    ["User", proc.user],
+    ["Status", proc.status],
+    ["Nice", String(proc.nice)],
+    ["Threads", detail.threads !== null ? String(detail.threads) : "—"],
+    [
+      "Open fds",
+      detail.open_fds !== null ? String(detail.open_fds) : "not readable (needs root)",
+    ],
+    ["Memory (RSS)", detail.vm_rss_kb !== null ? formatKb(detail.vm_rss_kb) : "—"],
+    ["Swap", detail.vm_swap_kb !== null ? formatKb(detail.vm_swap_kb) : "—"],
+  ];
+  const paths: [string, string][] = [
+    ["Executable", detail.exe ?? "not readable"],
+    ["Working dir", detail.cwd ?? "not readable"],
+    ["Cgroup", detail.cgroup ?? "—"],
+  ];
+
+  return (
+    <div className="flex flex-col gap-4 text-sm">
+      <section>
+        <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted">
+          Command
+        </h3>
+        <p className="break-all rounded-md bg-black/25 px-2.5 py-2 font-mono text-xs text-ink-secondary">
+          {detail.cmdline.join(" ")}
+        </p>
+      </section>
+
+      <section>
+        <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted">
+          Overview
+        </h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+          {facts.map(([label, value]) => (
+            <div key={label} className="contents">
+              <dt className="text-ink-muted">{label}</dt>
+              <dd className="tabular-nums text-ink-secondary">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section>
+        <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted">
+          Paths
+        </h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+          {paths.map(([label, value]) => (
+            <div key={label} className="contents">
+              <dt className="text-ink-muted">{label}</dt>
+              <dd className="break-all text-ink-secondary">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section>
+        <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted">
+          Sockets
+        </h3>
+        {detail.sockets.length === 0 ? (
+          <p className="text-xs text-ink-muted">
+            {detail.open_fds === null
+              ? "Not readable (needs root)."
+              : "No open sockets."}
+          </p>
+        ) : (
+          <table className="w-full text-xs tabular-nums">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-ink-muted">
+                <th className="pb-1 font-medium">Proto</th>
+                <th className="pb-1 font-medium">Local</th>
+                <th className="pb-1 font-medium">Remote</th>
+                <th className="pb-1 font-medium">State</th>
+              </tr>
+            </thead>
+            <tbody>
+              {detail.sockets.map((s, i) => (
+                <tr key={i} className="border-t border-border text-ink-secondary">
+                  <td className="py-1 pr-2">{s.proto}</td>
+                  <td className="break-all py-1 pr-2">{s.local}</td>
+                  <td className="break-all py-1 pr-2">{s.remote}</td>
+                  <td className="py-1">{s.state}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section>
+        <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted">
+          Open files{detail.open_fds !== null ? ` (sample of ${detail.open_fds})` : ""}
+        </h3>
+        {detail.fd_sample.length === 0 ? (
+          <p className="text-xs text-ink-muted">
+            {detail.open_fds === null ? "Not readable (needs root)." : "None."}
+          </p>
+        ) : (
+          <ul className="space-y-0.5 text-xs text-ink-secondary">
+            {detail.fd_sample.map((f) => (
+              <li key={f} className="break-all">
+                {f}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <div className="border-t border-border pt-3">
+        <button
+          onClick={onKill}
+          className="rounded-md bg-status-critical/15 px-3 py-1.5 text-sm font-medium text-status-critical hover:bg-status-critical/25"
+        >
+          End process
+        </button>
+      </div>
     </div>
   );
 }

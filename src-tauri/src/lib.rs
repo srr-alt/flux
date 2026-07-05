@@ -20,6 +20,7 @@ use crate::state::AppState;
 pub const EVENT_TICK: &str = "monitor://tick";
 pub const EVENT_DISKS: &str = "monitor://disks";
 pub const EVENT_GPU: &str = "monitor://gpu";
+pub const EVENT_SENSORS: &str = "monitor://sensors";
 
 /// WebKitGTK's DMA-BUF renderer crashes the WebKit process on the nouveau
 /// driver (nouveau_pushbuf_data assertion). Fall back to software
@@ -63,9 +64,11 @@ pub fn run() {
             commands_monitor::get_system_info,
             commands_monitor::get_initial_snapshot,
             commands_monitor::get_cpu_details,
+            commands_monitor::get_gpu_processes,
             commands_process::list_processes,
             commands_process::kill_process,
             commands_process::renice_process,
+            commands_process::get_process_detail,
             commands_modules::list_services,
             commands_modules::service_action,
             commands_modules::list_startup_apps,
@@ -158,6 +161,9 @@ async fn monitor_loop(app: tauri::AppHandle) {
                 }
             };
             let _ = app.emit(EVENT_DISKS, &disk_snapshot);
+
+            // Sensors share the slow cadence too — pure sysfs reads, cheap.
+            let _ = app.emit(EVENT_SENSORS, &monitor::sensors::snapshot());
 
             // GPU shares the slow cadence; nvidia-smi is a process spawn,
             // so keep it off the blocking tick path.

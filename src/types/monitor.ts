@@ -124,6 +124,59 @@ export interface GpuSnapshot {
   note: string | null;
 }
 
+export interface SocketInfo {
+  proto: string;
+  local: string;
+  remote: string;
+  state: string;
+}
+
+export interface ProcessDetail {
+  pid: number;
+  cmdline: string[];
+  exe: string | null;
+  cwd: string | null;
+  cgroup: string | null;
+  threads: number | null;
+  vm_rss_kb: number | null;
+  vm_swap_kb: number | null;
+  open_fds: number | null;
+  fd_sample: string[];
+  sockets: SocketInfo[];
+}
+
+export interface GpuProcess {
+  gpu_bus_id: string;
+  pid: number;
+  name: string;
+  mem_mb: number | null;
+}
+
+export interface TempReading {
+  label: string;
+  c: number;
+  max_c: number | null;
+  crit_c: number | null;
+}
+
+export interface FanReading {
+  label: string;
+  rpm: number;
+}
+
+export interface VoltageReading {
+  label: string;
+  volts: number;
+}
+
+export interface HwmonChip {
+  id: string;
+  name: string;
+  temps: TempReading[];
+  fans: FanReading[];
+  voltages: VoltageReading[];
+}
+
 export interface ProcessInfo {
   pid: number;
   ppid: number;

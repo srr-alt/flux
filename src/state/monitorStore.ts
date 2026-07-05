@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {
   DiskSnapshot,
   GpuSnapshot,
+  HwmonChip,
   SystemInfo,
   TickSnapshot,
 } from "../types/monitor";
@@ -29,10 +30,15 @@ interface MonitorState {
   /** Keyed by GPU index; utilization when available, else temperature. */
   gpuUtil: SeriesMap;
   gpuTemp: SeriesMap;
+  sensors: HwmonChip[];
+  sensorTimestamps: number[];
+  /** Temperature histories keyed `${chip.id}:${temp.label}`. */
+  sensorTemps: SeriesMap;
   setSystemInfo: (info: SystemInfo) => void;
   pushTick: (snapshot: TickSnapshot) => void;
   pushDisks: (snapshot: DiskSnapshot) => void;
   pushGpus: (gpus: GpuSnapshot[]) => void;
+  pushSensors: (chips: HwmonChip[]) => void;
 }
 
 function push(history: number[] | undefined, value: number): number[] {
@@ -58,7 +64,25 @@ export const useMonitorStore = create<MonitorState>((set) => ({
   gpuTimestamps: [],
   gpuUtil: {},
   gpuTemp: {},
+  sensors: [],
+  sensorTimestamps: [],
+  sensorTemps: {},
   setSystemInfo: (info) => set({ systemInfo: info }),
+  pushSensors: (chips) =>
+    set((state) => {
+      const sensorTemps: SeriesMap = { ...state.sensorTemps };
+      for (const chip of chips) {
+        for (const temp of chip.temps) {
+          const key = `${chip.id}:${temp.label}`;
+          sensorTemps[key] = push(sensorTemps[key], temp.c);
+        }
+      }
+      return {
+        sensors: chips,
+        sensorTimestamps: push(state.sensorTimestamps, Date.now() / 1000),
+        sensorTemps,
+      };
+    }),
   pushGpus: (gpus) =>
     set((state) => {
       const gpuUtil: SeriesMap = { ...state.gpuUtil };

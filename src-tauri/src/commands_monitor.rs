@@ -20,3 +20,8 @@ pub fn get_initial_snapshot(state: State<'_, AppState>) -> Option<TickSnapshot> 
 pub fn get_cpu_details() -> monitor::cpu::CpuDetails {
     monitor::cpu::details().clone()
 }
+
+#[tauri::command]
+pub fn get_gpu_processes() -> Vec<monitor::gpu::GpuProcess> {
+    monitor::gpu::processes()
+}

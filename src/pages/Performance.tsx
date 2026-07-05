@@ -9,7 +9,7 @@ import {
   formatPercent,
   formatUptime,
 } from "../lib/format";
-import { getCpuDetails } from "../lib/tauri";
+import { getCpuDetails, getGpuProcesses } from "../lib/tauri";
 import { chartColors, themeColor } from "../lib/theme";
 import { LoadingState } from "../components/ui/LoadingState";
 import { useMonitorStore } from "../state/monitorStore";
@@ -18,7 +18,11 @@ import {
   useSelectedSystemInfo,
 } from "../hooks/useHostMetrics";
 import { HostSwitcher } from "../components/hosts/HostSwitcher";
-import type { CpuDetails as CpuDetailsType } from "../types/monitor";
+import type {
+  CpuDetails as CpuDetailsType,
+  GpuProcess,
+  GpuSnapshot,
+} from "../types/monitor";
 
 const COLORS = chartColors;
 
@@ -694,10 +698,72 @@ function GpuDetail({ index }: { index: number }) {
           ))}
         </dl>
       </div>
+      {gpu.driver === "nvidia" && <GpuProcesses gpu={gpu} />}
       {gpu.note && (
         <div className="mt-4 rounded-xl border border-status-warning/30 bg-status-warning/10 px-4 py-3 text-sm text-status-warning">
           {gpu.note}
         </div>
+      )}
+    </div>
+  );
+}
+
+function GpuProcesses({ gpu }: { gpu: GpuSnapshot }) {
+  const [procs, setProcs] = useState<GpuProcess[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () =>
+      getGpuProcesses()
+        .then((all) => {
+          if (!cancelled) setProcs(all);
+        })
+        .catch(() => {});
+    refresh();
+    const id = setInterval(refresh, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const rows = gpu.pci_address
+    ? procs.filter((p) => p.gpu_bus_id === gpu.pci_address)
+    : procs;
+
+  return (
+    <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="text-sm font-medium text-ink-primary">Processes</h2>
+        <span className="text-[11px] text-ink-muted">
+          Compute processes only — graphics clients are not reported
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-ink-muted">No compute processes on this GPU.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-[10px] uppercase tracking-wider text-ink-muted">
+              <th className="pb-1.5 font-medium">Name</th>
+              <th className="w-20 pb-1.5 text-right font-medium">PID</th>
+              <th className="w-28 pb-1.5 text-right font-medium">VRAM</th>
+            </tr>
+          </thead>
+          <tbody className="tabular-nums">
+            {rows.map((p) => (
+              <tr key={p.pid} className="border-t border-border text-ink-secondary">
+                <td className="max-w-0 truncate py-1.5 text-ink-primary" title={p.name}>
+                  {p.name.split("/").pop()}
+                </td>
+                <td className="py-1.5 text-right">{p.pid}</td>
+                <td className="py-1.5 text-right">
+                  {p.mem_mb !== null ? formatBytes(p.mem_mb * 1048576) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { useMonitorTick } from "./hooks/useMonitorTick";
 import { Fleet } from "./pages/Fleet";
 import { Performance } from "./pages/Performance";
 import { Processes } from "./pages/Processes";
+import { Sensors } from "./pages/Sensors";
 import { Settings } from "./pages/Settings";
 import { Tools } from "./pages/Tools";
 
@@ -15,6 +16,7 @@ const PAGES: Record<PageId, ComponentType<{ onNavigate?: (page: PageId) => void 
   fleet: Fleet,
   performance: Performance,
   processes: Processes,
+  sensors: Sensors,
   tools: Tools,
   settings: Settings,
 };

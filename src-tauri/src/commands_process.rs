@@ -2,6 +2,7 @@ use tauri::State;
 
 use crate::monitor::process::{self, ProcessInfo, ProcessQuery};
 use crate::monitor::process_actions;
+use crate::monitor::process_detail::{self, ProcessDetail};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -37,4 +38,9 @@ pub fn kill_process(pid: u32, force: bool) -> Result<(), String> {
 #[tauri::command]
 pub fn renice_process(pid: u32, niceness: i32) -> Result<(), String> {
     process_actions::renice_process(pid, niceness)
+}
+
+#[tauri::command]
+pub fn get_process_detail(pid: u32) -> Result<ProcessDetail, String> {
+    process_detail::detail(pid)
 }

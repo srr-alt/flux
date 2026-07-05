@@ -5,6 +5,7 @@ pub mod network;
 pub mod process;
 pub mod process_actions;
 pub mod protocol;
+pub mod sensors;
 pub mod system_info;
 
 use serde::{Deserialize, Serialize};

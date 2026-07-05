@@ -4,6 +4,7 @@ import {
   getSystemInfo,
   onDisks,
   onGpu,
+  onSensors,
   onTick,
   setRefreshInterval,
 } from "../lib/tauri";
@@ -15,6 +16,7 @@ export function useMonitorTick() {
   const pushTick = useMonitorStore((s) => s.pushTick);
   const pushDisks = useMonitorStore((s) => s.pushDisks);
   const pushGpus = useMonitorStore((s) => s.pushGpus);
+  const pushSensors = useMonitorStore((s) => s.pushSensors);
   const setSystemInfo = useMonitorStore((s) => s.setSystemInfo);
 
   useEffect(() => {
@@ -42,10 +44,11 @@ export function useMonitorTick() {
     register(onTick(pushTick));
     register(onDisks(pushDisks));
     register(onGpu(pushGpus));
+    register(onSensors(pushSensors));
 
     return () => {
       cancelled = true;
       unlisteners.forEach((fn) => fn());
     };
-  }, [pushTick, pushDisks, pushGpus, setSystemInfo]);
+  }, [pushTick, pushDisks, pushGpus, pushSensors, setSystemInfo]);
 }

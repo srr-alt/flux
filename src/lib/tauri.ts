@@ -4,9 +4,12 @@ import type {
   CleanCategory,
   CpuDetails,
   DiskSnapshot,
+  GpuProcess,
   GpuSnapshot,
+  HwmonChip,
   InfoSection,
   PackageInfo,
+  ProcessDetail,
   ProcessInfo,
   ProcessQuery,
   ServiceInfo,
@@ -21,6 +24,7 @@ export const EVENTS = {
   TICK: "monitor://tick",
   DISKS: "monitor://disks",
   GPU: "monitor://gpu",
+  SENSORS: "monitor://sensors",
 } as const;
 
 // --- Monitor ---
@@ -35,6 +39,10 @@ export function getInitialSnapshot(): Promise<TickSnapshot | null> {
 
 export function getCpuDetails(): Promise<CpuDetails> {
   return invoke("get_cpu_details");
+}
+
+export function getGpuProcesses(): Promise<GpuProcess[]> {
+  return invoke("get_gpu_processes");
 }
 
 export function onTick(
@@ -55,6 +63,12 @@ export function onGpu(
   return listen<GpuSnapshot[]>(EVENTS.GPU, (event) => callback(event.payload));
 }
 
+export function onSensors(
+  callback: (chips: HwmonChip[]) => void,
+): Promise<UnlistenFn> {
+  return listen<HwmonChip[]>(EVENTS.SENSORS, (event) => callback(event.payload));
+}
+
 // --- Processes ---
 
 export function listProcesses(query: ProcessQuery): Promise<ProcessInfo[]> {
@@ -67,6 +81,10 @@ export function killProcess(pid: number, force: boolean): Promise<void> {
 
 export function reniceProcess(pid: number, niceness: number): Promise<void> {
   return invoke("renice_process", { pid, niceness });
+}
+
+export function getProcessDetail(pid: number): Promise<ProcessDetail> {
+  return invoke("get_process_detail", { pid });
 }
 
 // --- Services ---

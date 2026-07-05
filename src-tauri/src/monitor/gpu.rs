@@ -212,6 +212,51 @@ pub fn snapshot() -> Vec<GpuSnapshot> {
     }
 }
 
+#[derive(Serialize, Clone)]
+pub struct GpuProcess {
+    /// Same format as GpuSnapshot.pci_address, for multi-GPU filtering.
+    pub gpu_bus_id: String,
+    pub pid: u32,
+    /// Full executable path as reported by nvidia-smi.
+    pub name: String,
+    pub mem_mb: Option<u64>,
+}
+
+/// Compute processes per GPU. NVIDIA-only: nvidia-smi's query-compute-apps
+/// covers CUDA/NVENC clients (not graphics — Xorg won't appear). Other
+/// backends have no per-process story, so they return empty.
+pub fn processes() -> Vec<GpuProcess> {
+    if !matches!(backend(), GpuBackend::NvidiaSmi) {
+        return Vec::new();
+    }
+    let Ok(output) = Command::new("nvidia-smi")
+        .args([
+            "--query-compute-apps=gpu_bus_id,pid,process_name,used_gpu_memory",
+            "--format=csv,noheader,nounits",
+        ])
+        .output()
+    else {
+        return Vec::new();
+    };
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| {
+            // process_name is a path and can't contain commas on Linux /proc,
+            // but split conservatively anyway: bus id, pid, then name, mem.
+            let fields: Vec<&str> = line.split(',').map(str::trim).collect();
+            if fields.len() < 4 {
+                return None;
+            }
+            Some(GpuProcess {
+                gpu_bus_id: fields[0].to_string(),
+                pid: fields[1].parse().ok()?,
+                name: fields[2..fields.len() - 1].join(", "),
+                mem_mb: fields[fields.len() - 1].parse().ok(),
+            })
+        })
+        .collect()
+}
+
 const NVIDIA_QUERY: &str = "name,driver_version,vbios_version,pci.bus_id,utilization.gpu,memory.used,memory.total,memory.reserved,temperature.gpu,power.draw,power.limit,fan.speed,clocks.sm,clocks.mem,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current";
 
 fn nvidia_snapshot() -> Vec<GpuSnapshot> {
