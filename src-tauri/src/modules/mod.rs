@@ -1,4 +1,5 @@
 pub mod cleaner;
+pub mod docker;
 pub mod hardware;
 pub mod services;
 pub mod startup;

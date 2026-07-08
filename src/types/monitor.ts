@@ -124,6 +124,26 @@ export interface GpuSnapshot {
   note: string | null;
 }
 
+export interface ContainerInfo {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  ports: string;
+  created_at: string;
+}
+
+export interface ContainerStats {
+  id: string;
+  cpu_pct: number;
+  mem_pct: number;
+  mem_usage: string;
+  net_io: string;
+  block_io: string;
+  pids: number;
+}
+
 export interface SocketInfo {
   proto: string;
   local: string;

@@ -1,4 +1,4 @@
-use crate::modules::{cleaner, hardware, services, startup, uninstaller};
+use crate::modules::{cleaner, docker, hardware, services, startup, uninstaller};
 
 // --- Services ---
 
@@ -63,6 +63,37 @@ pub async fn list_packages() -> Result<Vec<uninstaller::PackageInfo>, String> {
 #[tauri::command]
 pub async fn uninstall_package(package: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || uninstaller::uninstall(&package))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+// --- Docker ---
+
+#[tauri::command]
+pub async fn list_containers() -> Result<Vec<docker::ContainerInfo>, String> {
+    tauri::async_runtime::spawn_blocking(docker::list)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn container_stats() -> Result<Vec<docker::ContainerStats>, String> {
+    // docker stats --no-stream blocks ~1s sampling deltas.
+    tauri::async_runtime::spawn_blocking(docker::stats)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn container_action(id: String, verb: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || docker::action(&id, &verb))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn container_logs(id: String, tail: u32) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || docker::logs(&id, tail))
         .await
         .map_err(|e| e.to_string())?
 }

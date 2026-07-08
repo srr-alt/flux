@@ -34,14 +34,26 @@ pub struct NetCounters {
     pub tx_errors: u64,
 }
 
-/// Parse /proc/net/dev (skips the two header lines and `lo`).
+/// Container/VM plumbing interfaces (docker bridges, veth pairs, libvirt).
+/// Their traffic is already counted on the physical uplink; listing them
+/// only buries the real NICs. tun/tap stay — VPNs are real user traffic.
+pub fn is_virtual(name: &str) -> bool {
+    name == "docker0"
+        || name.starts_with("veth")
+        || name.starts_with("br-")
+        || name.starts_with("virbr")
+        || name.starts_with("vnet")
+}
+
+/// Parse /proc/net/dev (skips the two header lines, `lo`, and virtual
+/// container interfaces).
 pub fn parse_net_dev(raw: &str) -> std::collections::HashMap<String, NetCounters> {
     raw.lines()
         .skip(2)
         .filter_map(|line| {
             let (name, rest) = line.split_once(':')?;
             let name = name.trim();
-            if name == "lo" {
+            if name == "lo" || is_virtual(name) {
                 return None;
             }
             let f: Vec<u64> = rest
@@ -75,7 +87,7 @@ pub fn snapshot(networks: &Networks, elapsed_secs: f64) -> Vec<NetworkInterfaceS
     let elapsed = elapsed_secs.max(0.001);
     let mut interfaces: Vec<NetworkInterfaceSnapshot> = networks
         .iter()
-        .filter(|(name, _)| *name != "lo")
+        .filter(|(name, _)| *name != "lo" && !is_virtual(name))
         .map(|(name, data)| NetworkInterfaceSnapshot {
             name: name.clone(),
             rx_bytes_per_sec: data.received() as f64 / elapsed,

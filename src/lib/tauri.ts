@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   CleanCategory,
+  ContainerInfo,
+  ContainerStats,
   CpuDetails,
   DiskSnapshot,
   GpuProcess,
@@ -85,6 +87,24 @@ export function reniceProcess(pid: number, niceness: number): Promise<void> {
 
 export function getProcessDetail(pid: number): Promise<ProcessDetail> {
   return invoke("get_process_detail", { pid });
+}
+
+// --- Docker ---
+
+export function listContainers(): Promise<ContainerInfo[]> {
+  return invoke("list_containers");
+}
+
+export function containerStats(): Promise<ContainerStats[]> {
+  return invoke("container_stats");
+}
+
+export function containerAction(id: string, verb: string): Promise<void> {
+  return invoke("container_action", { id, verb });
+}
+
+export function containerLogs(id: string, tail: number): Promise<string> {
+  return invoke("container_logs", { id, tail });
 }
 
 // --- Services ---

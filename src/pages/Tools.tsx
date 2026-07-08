@@ -1,5 +1,6 @@
 import { useState, type ComponentType } from "react";
 import { Cleaner } from "./Cleaner";
+import { Docker } from "./Docker";
 import { HardwareInfo } from "./HardwareInfo";
 import { Services } from "./Services";
 import { Startup } from "./Startup";
@@ -7,6 +8,7 @@ import { Uninstaller } from "./Uninstaller";
 
 const TABS: { id: string; label: string; Component: ComponentType }[] = [
   { id: "services", label: "Services", Component: Services },
+  { id: "docker", label: "Docker", Component: Docker },
   { id: "startup", label: "Startup Apps", Component: Startup },
   { id: "cleaner", label: "Cleaner", Component: Cleaner },
   { id: "uninstaller", label: "Uninstaller", Component: Uninstaller },
