@@ -1075,7 +1075,7 @@ dependencies = [
 
 [[package]]
 name = "flux"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -1100,7 +1100,7 @@ dependencies = [
 
 [[package]]
 name = "flux-agent"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "flux-core",
  "serde",
@@ -1110,7 +1110,7 @@ dependencies = [
 
 [[package]]
 name = "flux-core"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "libc",
  "nix 0.31.3",
