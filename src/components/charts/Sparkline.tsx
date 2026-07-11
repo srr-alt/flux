@@ -3,7 +3,8 @@ import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 
 export interface SparklineSeries {
-  values: number[];
+  /** null = no sample at that tick; uPlot renders a gap. */
+  values: (number | null)[];
   color: string;
   label: string;
 }

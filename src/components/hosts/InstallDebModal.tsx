@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { installFluxDeb } from "../../lib/tauri";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
 
 interface InstallDebModalProps {
@@ -55,8 +57,8 @@ export function InstallDebModal({ hostId, hostName, onClose }: InstallDebModalPr
             machine. Needs the remote user's sudo password — used once, sent
             only over the SSH channel, never stored.
           </p>
-          <input
-            className="w-full rounded border border-border bg-page px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-white/30"
+          <Input
+            className="w-full"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -65,13 +67,9 @@ export function InstallDebModal({ hostId, hostName, onClose }: InstallDebModalPr
             required
           />
           {error && <p className="text-xs text-status-critical">{error}</p>}
-          <button
-            type="submit"
-            disabled={busy || !password}
-            className="rounded bg-series-1/20 px-3 py-1.5 text-sm text-series-1 hover:bg-series-1/30 disabled:opacity-40"
-          >
+          <Button type="submit" variant="primary" disabled={!password} loading={busy}>
             {busy ? "Installing… (this can take a minute)" : "Install"}
-          </button>
+          </Button>
         </form>
       )}
     </Modal>

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { addHost, forgetHostKey, listHosts, testHostConnection } from "../../lib/tauri";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
 import { useHostsStore } from "../../state/hostsStore";
 import type { TestResult } from "../../types/hosts";
@@ -9,9 +11,6 @@ interface AddHostWizardProps {
 }
 
 type Step = "form" | "confirm" | "provisioning" | "done";
-
-const inputCls =
-  "w-full rounded border border-border bg-page px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-white/30";
 
 export function AddHostWizard({ onClose }: AddHostWizardProps) {
   const [step, setStep] = useState<Step>("form");
@@ -88,8 +87,8 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
           >
             <label className="flex flex-col gap-1 text-xs text-ink-muted">
               Display name (optional)
-              <input
-                className={inputCls}
+              <Input
+                className="w-full"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="build-server"
@@ -98,8 +97,8 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
             <div className="flex gap-2">
               <label className="flex flex-1 flex-col gap-1 text-xs text-ink-muted">
                 Address
-                <input
-                  className={inputCls}
+                <Input
+                  className="w-full"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="192.168.1.50 or host.example.com"
@@ -108,8 +107,8 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
               </label>
               <label className="flex w-20 flex-col gap-1 text-xs text-ink-muted">
                 Port
-                <input
-                  className={inputCls}
+                <Input
+                  className="w-full"
                   type="number"
                   min={1}
                   max={65535}
@@ -120,8 +119,8 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
             </div>
             <label className="flex flex-col gap-1 text-xs text-ink-muted">
               Username
-              <input
-                className={inputCls}
+              <Input
+                className="w-full"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -129,8 +128,8 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
             </label>
             <label className="flex flex-col gap-1 text-xs text-ink-muted">
               Password
-              <input
-                className={inputCls}
+              <Input
+                className="w-full"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -147,7 +146,7 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
             {keyChanged && (
               <button
                 type="button"
-                className="rounded border border-status-warning/40 bg-status-warning/10 px-3 py-1.5 text-xs text-status-warning hover:bg-status-warning/20"
+                className="rounded-md border border-status-warning/40 bg-status-warning/10 px-3 py-1.5 text-xs text-status-warning transition-colors duration-100 hover:bg-status-warning/20"
                 onClick={async () => {
                   await forgetHostKey(address.trim(), port);
                   setKeyChanged(false);
@@ -158,13 +157,15 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
                 I reinstalled this machine — forget old key & re-verify
               </button>
             )}
-            <button
+            <Button
               type="submit"
-              disabled={busy || !address.trim() || !username.trim() || !password}
-              className="mt-1 rounded bg-series-1/20 px-3 py-1.5 text-sm text-series-1 hover:bg-series-1/30 disabled:opacity-40"
+              variant="primary"
+              disabled={!address.trim() || !username.trim() || !password}
+              loading={busy}
+              className="mt-1"
             >
               {busy ? "Connecting…" : "Test connection"}
-            </button>
+            </Button>
           </form>
         )}
 
@@ -188,18 +189,12 @@ export function AddHostWizard({ onClose }: AddHostWizardProps) {
             </div>
             {error && <p className="text-xs text-status-critical">{error}</p>}
             <div className="flex justify-end gap-2">
-              <button
-                className="rounded px-3 py-1.5 text-sm text-ink-muted hover:bg-white/10"
-                onClick={() => setStep("form")}
-              >
+              <Button variant="ghost" onClick={() => setStep("form")}>
                 Back
-              </button>
-              <button
-                className="rounded bg-series-1/20 px-3 py-1.5 text-sm text-series-1 hover:bg-series-1/30"
-                onClick={provision}
-              >
+              </Button>
+              <Button variant="primary" onClick={provision}>
                 Trust & add host
-              </button>
+              </Button>
             </div>
           </div>
         )}

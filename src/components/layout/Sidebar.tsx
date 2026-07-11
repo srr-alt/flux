@@ -1,5 +1,6 @@
 import { Zap } from "lucide-react";
 import { NAVIGATION, type PageId } from "../../config/navigation";
+import { HostSwitcher } from "../hosts/HostSwitcher";
 import { useMonitorStore } from "../../state/monitorStore";
 
 interface SidebarProps {
@@ -27,20 +28,24 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
           )}
         </div>
       </div>
-      <div className="px-4 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted/70">
-        Workspace
+      {/* Global machine picker: Performance and Processes follow it. */}
+      <div className="px-3 pb-3">
+        <HostSwitcher />
       </div>
       <nav className="flex-1 space-y-px px-2">
         {NAVIGATION.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => onNavigate(id)}
-            className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors duration-100 ${
+            className={`relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors duration-100 ${
               active === id
                 ? "bg-white/[0.07] font-medium text-ink-primary"
                 : "text-ink-secondary hover:bg-white/[0.04] hover:text-ink-primary"
             }`}
           >
+            {active === id && (
+              <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-series-1" />
+            )}
             <Icon
               size={15}
               strokeWidth={1.8}

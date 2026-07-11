@@ -28,6 +28,41 @@
   --color-status-warning: #d4a72c;
   --color-status-serious: #ec835a;
   --color-status-critical: #e5534b;
+
+  /* Terminal (xterm) background — darker than surface so the PTY reads as
+     its own plane. Keep hex 6-digit (withAlpha). */
+  --color-terminal: #0b0d12;
+
+  /* Motion: entrances only. Exit animations would need unmount
+     orchestration; conditional mounts keep it simple. */
+  --animate-fade-in: fade-in 150ms ease-out;
+  --animate-pop-in: pop-in 150ms ease-out;
+  --animate-drawer-in: drawer-in 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-page-in: page-in 150ms ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+  }
+  @keyframes drawer-in {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+  }
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
 }
 
 html {

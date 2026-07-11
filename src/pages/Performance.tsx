@@ -12,12 +12,12 @@ import {
 import { getCpuDetails, getGpuProcesses } from "../lib/tauri";
 import { chartColors, themeColor } from "../lib/theme";
 import { LoadingState } from "../components/ui/LoadingState";
+import { HostGate } from "../components/hosts/HostGate";
 import { useMonitorStore } from "../state/monitorStore";
 import {
   useSelectedHostMetrics,
   useSelectedSystemInfo,
 } from "../hooks/useHostMetrics";
-import { HostSwitcher } from "../components/hosts/HostSwitcher";
 import type {
   CpuDetails as CpuDetailsType,
   GpuProcess,
@@ -35,6 +35,14 @@ function coreColor(pct: number): string {
 type Selection = string; // "cpu" | "memory" | `disk:${device}` | `net:${iface}`
 
 export function Performance() {
+  return (
+    <HostGate>
+      <PerformanceInner />
+    </HostGate>
+  );
+}
+
+function PerformanceInner() {
   const [selected, setSelected] = useState<Selection>("cpu");
   const {
     latest,
@@ -61,10 +69,7 @@ export function Performance() {
   if (!latest) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <HostSwitcher />
-          <LoadingState label="Collecting first sample…" />
-        </div>
+        <LoadingState label="Collecting first sample…" />
       </div>
     );
   }
@@ -77,9 +82,6 @@ export function Performance() {
     <div className="flex h-full">
       {/* Rail */}
       <div className="w-64 shrink-0 space-y-1.5 overflow-y-auto border-r border-border p-3">
-        <div className="pb-1.5">
-          <HostSwitcher />
-        </div>
         <RailItem
           active={selected === "cpu"}
           onClick={() => setSelected("cpu")}
@@ -353,7 +355,7 @@ function MemoryDetail() {
     { label: "Used", kb: usedKb, color: COLORS.memory },
     { label: "Cached", kb: mem.cached_kb, color: COLORS.net },
     { label: "Buffers", kb: mem.buffers_kb, color: COLORS.disk },
-    { label: "Free", kb: mem.free_kb, color: "#2c2c2a" },
+    { label: "Free", kb: mem.free_kb, color: themeColor("gridline") },
   ];
 
   return (

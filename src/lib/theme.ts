@@ -13,7 +13,9 @@ const FALLBACKS = {
   series7: "#d55181",
   series8: "#d95926",
   inkMuted: "#8a8f98",
+  inkSecondary: "#c9cdd3",
   gridline: "#26282c",
+  terminal: "#0b0d12",
   statusGood: "#2da44e",
   statusWarning: "#d4a72c",
   statusSerious: "#ec835a",
@@ -32,7 +34,9 @@ const CSS_VAR: Record<ThemeColorName, string> = {
   series7: "--color-series-7",
   series8: "--color-series-8",
   inkMuted: "--color-ink-muted",
+  inkSecondary: "--color-ink-secondary",
   gridline: "--color-gridline",
+  terminal: "--color-terminal",
   statusGood: "--color-status-good",
   statusWarning: "--color-status-warning",
   statusSerious: "--color-status-serious",
@@ -73,3 +77,13 @@ export const chartColors = {
 };
 
 export const AXIS_FONT = '11px "Inter Variable", system-ui';
+
+/** xterm theme built from tokens so the terminal tracks the app palette. */
+export function terminalTheme() {
+  return {
+    background: themeColor("terminal"),
+    foreground: themeColor("inkSecondary"),
+    cursor: themeColor("inkSecondary"),
+    selectionBackground: withAlpha(themeColor("series4"), 0.33),
+  };
+}

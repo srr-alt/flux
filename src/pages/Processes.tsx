@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Layers, SearchX } from "lucide-react";
+import { ChevronDown, ChevronRight, Layers, Minus, Plus, Search, SearchX } from "lucide-react";
 import {
   getProcessDetail,
   killProcess,
@@ -8,14 +8,17 @@ import {
   listRemoteProcesses,
   reniceProcess,
 } from "../lib/tauri";
-import { HostSwitcher } from "../components/hosts/HostSwitcher";
 import { useSelectedHostMetrics, useSelectedSystemInfo } from "../hooks/useHostMetrics";
 import { formatBytes, formatBytesPerSec, formatKb, formatPercent } from "../lib/format";
 import { themeColor, withAlpha } from "../lib/theme";
+import { Banner } from "../components/ui/Banner";
+import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { Drawer } from "../components/ui/Drawer";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
 import { LoadingState } from "../components/ui/LoadingState";
+import { HostGate } from "../components/hosts/HostGate";
 import type { ProcessDetail, ProcessInfo } from "../types/monitor";
 
 type SortKey = "name" | "user" | "cpu" | "mem" | "disk";
@@ -62,6 +65,14 @@ function compare(a: number | string, b: number | string, desc: boolean): number 
 }
 
 export function Processes() {
+  return (
+    <HostGate>
+      <ProcessesInner />
+    </HostGate>
+  );
+}
+
+function ProcessesInner() {
   const [processes, setProcesses] = useState<ProcessInfo[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>("cpu");
   const [sortDesc, setSortDesc] = useState(true);
@@ -216,38 +227,40 @@ export function Processes() {
     },
   ];
 
+  const reniceCls =
+    "rounded-md border border-transparent px-1.5 py-0.5 text-ink-muted transition-colors duration-100 hover:border-border hover:bg-white/10 hover:text-ink-primary";
   const actionButtons = (proc: ProcessInfo) => (
-    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100">
+    <div className="flex items-center justify-end gap-1">
       {isLocal && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          doRenice(proc, 1);
-        }}
-        title="Lower priority (nice +1)"
-        className="rounded px-1.5 py-0.5 text-xs text-ink-muted hover:bg-white/10 hover:text-ink-primary"
-      >
-        −
-      </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            doRenice(proc, 1);
+          }}
+          title="Lower priority (nice +1)"
+          className={reniceCls}
+        >
+          <Minus size={12} />
+        </button>
       )}
       {isLocal && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          doRenice(proc, -1);
-        }}
-        title="Raise priority (nice −1, needs root)"
-        className="rounded px-1.5 py-0.5 text-xs text-ink-muted hover:bg-white/10 hover:text-ink-primary"
-      >
-        +
-      </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            doRenice(proc, -1);
+          }}
+          title="Raise priority (nice −1, needs root)"
+          className={reniceCls}
+        >
+          <Plus size={12} />
+        </button>
       )}
       <button
         onClick={(e) => {
           e.stopPropagation();
           setConfirmKill(proc);
         }}
-        className="rounded px-2 py-0.5 text-xs text-status-critical hover:bg-status-critical/15"
+        className="rounded-md border border-transparent px-2 py-0.5 text-xs text-status-critical transition-colors duration-100 hover:border-status-critical/30 hover:bg-status-critical/15"
       >
         End
       </button>
@@ -285,15 +298,13 @@ export function Processes() {
   return (
     <div className="flex h-full flex-col p-6">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold text-ink-primary">Processes</h1>
-          <HostSwitcher />
-        </div>
+        <h1 className="text-lg font-semibold text-ink-primary">Processes</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setGrouped((g) => !g)}
             title="Group processes with the same name"
-            className={`inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm transition-colors ${
+            aria-pressed={grouped}
+            className={`inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm transition-colors duration-100 ${
               grouped
                 ? "bg-series-1/15 text-series-1"
                 : "text-ink-secondary hover:text-ink-primary"
@@ -301,22 +312,19 @@ export function Processes() {
           >
             <Layers size={13} /> Group
           </button>
-          <input
+          <Input
+            icon={Search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name or command…"
-            className="w-64 rounded-md border border-border bg-page px-3 py-1.5 text-sm text-ink-primary placeholder:text-ink-muted focus:border-series-1 focus:outline-none"
+            className="w-64"
           />
         </div>
       </div>
 
-      {error && (
-        <div className="mb-3 rounded-md border border-status-critical/40 bg-status-critical/10 px-3 py-2 text-sm text-status-critical">
-          {error}
-        </div>
-      )}
+      {error && <Banner>{error}</Banner>}
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface">
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-surface">
         {loading ? (
           <LoadingState label="Loading processes…" />
         ) : groups.length === 0 ? (
@@ -328,17 +336,17 @@ export function Processes() {
           />
         ) : (
         <table className="w-full text-[13px]">
-          <thead className="sticky top-0 z-10 bg-surface">
-            <tr className="text-left text-[10px] uppercase tracking-wider text-ink-muted">
+          <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--color-border)]">
+            <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
               <th
                 onClick={() => onHeaderClick("name")}
-                className="cursor-pointer select-none px-3 pb-2 pt-3 align-bottom font-medium hover:text-ink-primary"
+                className="cursor-pointer select-none px-3 pb-2 pt-2 align-bottom font-medium hover:text-ink-primary"
               >
                 Name{arrow("name")}
               </th>
               <th
                 onClick={() => onHeaderClick("user")}
-                className="w-24 cursor-pointer select-none px-3 pb-2 pt-3 align-bottom font-medium hover:text-ink-primary"
+                className="w-24 cursor-pointer select-none px-3 pb-2 pt-2 align-bottom font-medium hover:text-ink-primary"
               >
                 User{arrow("user")}
               </th>
@@ -352,7 +360,7 @@ export function Processes() {
                 <th
                   key={key}
                   onClick={() => onHeaderClick(key)}
-                  className={`${width} cursor-pointer select-none border-l border-border px-3 pb-2 pt-2 text-right font-medium hover:text-ink-primary`}
+                  className={`${width} cursor-pointer select-none border-l border-border px-3 pb-2 pt-2 text-right align-bottom font-medium hover:text-ink-primary`}
                 >
                   <div className="text-sm font-semibold text-ink-secondary">
                     {total}
@@ -361,7 +369,7 @@ export function Processes() {
                   {arrow(key)}
                 </th>
               ))}
-              <th className="w-24 px-3 pb-2 pt-3" />
+              <th className="w-24 px-3 pb-2 pt-2" />
             </tr>
           </thead>
           <tbody className="tabular-nums">
@@ -429,24 +437,15 @@ export function Processes() {
               {confirmKill.cmd || confirmKill.name}
             </p>
             <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmKill(null)}
-                className="rounded-md px-3 py-1.5 text-sm text-ink-secondary hover:bg-white/10"
-              >
+              <Button variant="ghost" onClick={() => setConfirmKill(null)}>
                 Cancel
-              </button>
-              <button
-                onClick={() => doKill(confirmKill, true)}
-                className="rounded-md px-3 py-1.5 text-sm text-status-critical hover:bg-status-critical/15"
-              >
+              </Button>
+              <Button variant="dangerSoft" onClick={() => doKill(confirmKill, true)}>
                 Force kill
-              </button>
-              <button
-                onClick={() => doKill(confirmKill, false)}
-                className="rounded-md bg-status-critical px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-              >
+              </Button>
+              <Button variant="danger" onClick={() => doKill(confirmKill, false)}>
                 Terminate
-              </button>
+              </Button>
             </div>
         </Modal>
       )}
@@ -602,12 +601,13 @@ function ProcessDetailPanel({
       </section>
 
       <div className="border-t border-border pt-3">
-        <button
+        <Button
+          variant="dangerSoft"
           onClick={onKill}
-          className="rounded-md bg-status-critical/15 px-3 py-1.5 text-sm font-medium text-status-critical hover:bg-status-critical/25"
+          className="bg-status-critical/15 font-medium hover:bg-status-critical/25"
         >
           End process
-        </button>
+        </Button>
       </div>
     </div>
   );

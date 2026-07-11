@@ -82,7 +82,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/60"
       onMouseDown={(e) => {
         if (closeOnOverlay && dismissable && e.target === e.currentTarget) onClose();
       }}
@@ -93,7 +93,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
-        className={`relative max-h-[85vh] overflow-y-auto rounded-lg border border-border bg-surface p-5 shadow-xl shadow-black/40 outline-none ${width}`}
+        className={`relative max-h-[85vh] animate-pop-in overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-xl shadow-black/40 outline-none ${width}`}
       >
         {showClose && (
           <button

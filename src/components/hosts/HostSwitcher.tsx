@@ -52,18 +52,18 @@ export function HostSwitcher() {
     <div className="relative" ref={ref}>
       <button
         ref={triggerRef}
-        className="flex items-center gap-2 rounded border border-border bg-surface px-2.5 py-1 text-xs text-ink-secondary hover:border-white/25"
+        className="flex w-full items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-ink-secondary transition-colors duration-100 hover:border-white/25"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={`h-1.5 w-1.5 rounded-full ${dot(selected)}`} />
-        {selectedName}
-        <ChevronDown size={12} />
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot(selected)}`} />
+        <span className="min-w-0 flex-1 truncate text-left">{selectedName}</span>
+        <ChevronDown size={12} className="shrink-0" />
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full z-40 mt-1 min-w-48 rounded border border-border bg-surface py-1 shadow-lg"
+          className="absolute left-0 top-full z-40 mt-1 w-full min-w-48 animate-pop-in rounded-md border border-border bg-surface py-1 shadow-xl shadow-black/40"
           role="listbox"
           aria-label="Select host"
         >

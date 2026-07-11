@@ -4,7 +4,8 @@ import "uplot/dist/uPlot.min.css";
 import { AXIS_FONT, themeColor } from "../../lib/theme";
 
 export interface AreaSeries {
-  values: number[];
+  /** null = no sample at that tick; uPlot renders a gap. */
+  values: (number | null)[];
   color: string;
   label: string;
 }

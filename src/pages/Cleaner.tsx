@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { cleanCategory, scanCleanable } from "../lib/tauri";
+import { Badge } from "../components/ui/Badge";
+import { Banner } from "../components/ui/Banner";
+import { Button } from "../components/ui/Button";
+import { EmptyState } from "../components/ui/EmptyState";
 import { LoadingState } from "../components/ui/LoadingState";
 import { formatBytes } from "../lib/format";
 import type { CleanCategory } from "../types/monitor";
@@ -58,51 +63,42 @@ export function Cleaner() {
     <div className="p-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-ink-primary">System Cleaner</h1>
-        <button
-          onClick={scan}
-          disabled={scanning}
-          className="rounded-md px-3 py-1.5 text-sm text-ink-secondary hover:bg-white/10 disabled:opacity-40"
-        >
+        <Button variant="ghost" onClick={scan} loading={scanning}>
           {scanning ? "Scanning…" : "Rescan"}
-        </button>
+        </Button>
       </div>
 
-      {message && (
-        <div className="mb-3 rounded-md border border-status-good/40 bg-status-good/10 px-3 py-2 text-sm text-status-good">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div className="mb-3 rounded-md border border-status-critical/40 bg-status-critical/10 px-3 py-2 text-sm text-status-critical">
-          {error}
-        </div>
-      )}
+      {message && <Banner tone="good">{message}</Banner>}
+      {error && <Banner>{error}</Banner>}
 
       {scanning && categories.length === 0 && (
         <LoadingState label="Scanning for cleanable files…" />
+      )}
+      {!scanning && categories.length === 0 && !error && (
+        <EmptyState
+          icon={Trash2}
+          title="Nothing to clean"
+          hint="Caches and logs will show up here as they accumulate."
+        />
       )}
 
       <div className="space-y-2">
         {categories.map((cat) => (
           <label
             key={cat.id}
-            className="flex cursor-pointer items-center gap-4 rounded-lg border border-border bg-surface px-4 py-3 hover:bg-white/5"
+            className="flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 hover:bg-white/5"
           >
             <input
               type="checkbox"
               checked={selected.has(cat.id)}
               onChange={() => toggle(cat.id)}
               disabled={cat.size_bytes === 0}
-              className="h-4 w-4 accent-series-4"
+              className="h-4 w-4 accent-series-1"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-ink-primary">{cat.label}</span>
-                {cat.needs_root && (
-                  <span className="rounded bg-status-warning/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-status-warning">
-                    needs auth
-                  </span>
-                )}
+                {cat.needs_root && <Badge tone="warning">needs auth</Badge>}
               </div>
               <div className="text-xs text-ink-muted">{cat.description}</div>
             </div>
@@ -126,13 +122,15 @@ export function Cleaner() {
             ? `${formatBytes(selectedSize)} selected`
             : "Select categories to clean"}
         </span>
-        <button
+        <Button
+          variant="primary"
           onClick={clean}
-          disabled={selected.size === 0 || cleaning}
-          className="rounded-md bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
+          disabled={selected.size === 0}
+          loading={cleaning}
+          className="px-4 py-2"
         >
           {cleaning ? "Cleaning…" : "Clean selected"}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -1,4 +1,6 @@
 import { Cpu, HardDrive, Monitor, Server, Trash2 } from "lucide-react";
+import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
 import { Sparkline } from "../charts/Sparkline";
 import { Meter } from "../charts/Meter";
 import {
@@ -133,13 +135,9 @@ export function HostTile({
                 : "waiting for connection…"}
           </div>
         </div>
-        <span
-          className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${pill.cls} ${
-            pill.pulse ? "animate-pulse" : ""
-          }`}
-        >
+        <Badge className={`ml-auto shrink-0 ${pill.cls}`} pulse={pill.pulse}>
           {pill.label}
-        </span>
+        </Badge>
       </div>
 
       {/* cpu sparkline with live value */}
@@ -206,8 +204,9 @@ export function HostTile({
         status?.state === "connected" && (
           <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
             {status.mode === "agentless" && onDeployAgent && (
-              <button
-                className="rounded-md bg-series-1/15 px-2 py-1 text-[11px] font-medium text-series-1 hover:bg-series-1/25"
+              <Button
+                variant="soft"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeployAgent();
@@ -215,11 +214,13 @@ export function HostTile({
                 title="Upload the flux-agent binary for full process detail"
               >
                 Enable full detail
-              </button>
+              </Button>
             )}
             {onInstallDeb && (
-              <button
-                className="rounded-md bg-white/5 px-2 py-1 text-[11px] text-ink-secondary hover:bg-white/10"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-white/5"
                 onClick={(e) => {
                   e.stopPropagation();
                   onInstallDeb();
@@ -227,7 +228,7 @@ export function HostTile({
                 title="Install the Flux desktop app on this machine via apt"
               >
                 Install Flux
-              </button>
+              </Button>
             )}
           </div>
         )

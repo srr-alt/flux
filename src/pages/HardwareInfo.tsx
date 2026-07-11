@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, RefreshCw, Search, SearchX } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, SearchX } from "lucide-react";
 import { getHardwareInfo } from "../lib/tauri";
+import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
 import { LoadingState } from "../components/ui/LoadingState";
 import type { InfoSection } from "../types/monitor";
 
@@ -16,10 +18,10 @@ function SectionCard({
   const isOpen = forceOpen || open;
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
+    <div className="rounded-xl border border-border bg-surface">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-4 py-2.5 text-left"
+        className="flex w-full items-center gap-2 rounded-t-xl px-4 py-2.5 text-left transition-colors duration-100 hover:bg-white/5"
       >
         {isOpen ? (
           <ChevronDown size={14} className="shrink-0 text-ink-muted" />
@@ -78,30 +80,23 @@ export function HardwareInfo() {
   }, [sections, search]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 px-6 py-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search
-            size={14}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-          />
-          <input
+    <div className="flex h-full flex-col p-6">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h1 className="text-lg font-semibold text-ink-primary">System Info</h1>
+        <div className="flex items-center gap-2">
+          <Input
+            icon={Search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search hardware info…"
-            className="w-full rounded-md border border-border bg-surface py-1.5 pl-9 pr-3 text-sm text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-series-1/50"
+            className="w-64"
           />
+          <Button onClick={load} loading={loading}>
+            Refresh
+          </Button>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-ink-secondary transition-colors hover:text-ink-primary disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-          Refresh
-        </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {filtered === null ? (
           <LoadingState label="Reading hardware…" />
         ) : filtered.length === 0 ? (

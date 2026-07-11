@@ -20,6 +20,19 @@ export function useSelectedHostMetrics(): HostSeries & {
   return { ...metrics, hostId, isLocal: hostId === LOCAL_HOST_ID };
 }
 
+/** Connection status of the selected host; null for the local machine
+ * (always "connected"). Undefined status (not yet reported) counts as
+ * connecting. */
+export function useSelectedHostStatus() {
+  const hostId = useHostsStore((s) => s.selectedHostId);
+  const status = useHostsStore((s) => s.statuses[hostId]);
+  const name = useHostsStore(
+    (s) => s.hosts.find((h) => h.id === hostId)?.name ?? hostId,
+  );
+  if (hostId === LOCAL_HOST_ID) return null;
+  return { status: status ?? { state: "connecting" as const }, name };
+}
+
 /** SystemInfo for the selected host (local store or hosts store). */
 export function useSelectedSystemInfo() {
   const hostId = useHostsStore((s) => s.selectedHostId);

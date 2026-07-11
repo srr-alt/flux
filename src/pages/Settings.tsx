@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Circle, Square } from "lucide-react";
+import { LoadingState } from "../components/ui/LoadingState";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { useMonitorStore } from "../state/monitorStore";
 import { formatKb, formatUptime } from "../lib/format";
 import {
@@ -21,27 +23,17 @@ function RefreshRateCard() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="rounded-xl border border-border bg-surface p-4">
       <h2 className="mb-1 text-sm font-medium text-ink-primary">Refresh rate</h2>
       <p className="mb-3 text-xs text-ink-muted">
         How often CPU, memory and network stats are sampled. Disk and GPU
         update at half this rate.
       </p>
-      <div className="inline-flex rounded-lg border border-border bg-page p-1">
-        {REFRESH_OPTIONS.map((opt) => (
-          <button
-            key={opt.ms}
-            onClick={() => apply(opt.ms)}
-            className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
-              opt.ms === refreshMs
-                ? "bg-series-1/15 font-medium text-series-1"
-                : "text-ink-secondary hover:text-ink-primary"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        options={REFRESH_OPTIONS.map((opt) => ({ value: opt.ms, label: opt.label }))}
+        value={refreshMs}
+        onChange={apply}
+      />
     </div>
   );
 }
@@ -75,7 +67,7 @@ function LoggingCard() {
   const active = status?.active ?? false;
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="rounded-xl border border-border bg-surface p-4">
       <h2 className="mb-1 text-sm font-medium text-ink-primary">Usage logging</h2>
       <p className="mb-3 text-xs text-ink-muted">
         Records CPU, memory, GPU and network usage to a CSV file every sample
@@ -84,7 +76,8 @@ function LoggingCard() {
       <div className="flex items-center gap-3">
         <button
           onClick={toggle}
-          className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+          aria-pressed={active}
+          className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-100 ${
             active
               ? "bg-status-critical/15 text-status-critical hover:bg-status-critical/25"
               : "bg-series-1/15 text-series-1 hover:bg-series-1/25"
@@ -124,7 +117,7 @@ export function Settings() {
       <h1 className="text-lg font-semibold text-ink-primary">Settings</h1>
       <RefreshRateCard />
       <LoggingCard />
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="rounded-xl border border-border bg-surface p-4">
         <h2 className="mb-3 text-sm font-medium text-ink-primary">About this system</h2>
         {systemInfo ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
@@ -147,7 +140,7 @@ export function Settings() {
             ))}
           </dl>
         ) : (
-          <span className="text-sm text-ink-muted">Loading…</span>
+          <LoadingState label="Reading system info…" className="justify-start p-0" />
         )}
       </div>
     </div>

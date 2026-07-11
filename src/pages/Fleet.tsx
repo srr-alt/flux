@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AddHostWizard } from "../components/hosts/AddHostWizard";
 import { HostTile } from "../components/hosts/HostTile";
 import { InstallDebModal } from "../components/hosts/InstallDebModal";
+import { Button } from "../components/ui/Button";
+import { EmptyState } from "../components/ui/EmptyState";
 import type { PageId } from "../config/navigation";
 import type { DeployProgress } from "../types/hosts";
 import { formatBytesPerSec, formatKb } from "../lib/format";
@@ -131,12 +133,9 @@ export function Fleet({ onNavigate }: FleetProps) {
             One dashboard for every machine — click a tile to inspect
           </p>
         </div>
-        <button
-          className="flex items-center gap-1.5 rounded-md bg-series-1/20 px-3 py-1.5 text-sm font-medium text-series-1 hover:bg-series-1/30"
-          onClick={() => setWizardOpen(true)}
-        >
+        <Button variant="primary" onClick={() => setWizardOpen(true)}>
           <Plus size={14} /> Add host
-        </button>
+        </Button>
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -195,25 +194,26 @@ export function Fleet({ onNavigate }: FleetProps) {
         ))}
 
         {hosts.length === 0 && (
-          <div className="flex flex-col justify-center gap-2 rounded-xl border border-dashed border-border p-5 text-sm text-ink-muted">
-            <span className="font-medium text-ink-secondary">
-              No remote systems yet
-            </span>
-            <span className="text-xs leading-relaxed">
-              Add any Linux machine with SSH — monitoring starts instantly, no
-              install needed. Scripts can register hosts too:
-            </span>
-            <span className="flex items-center gap-1.5 rounded-md bg-black/25 px-2 py-1.5 font-mono text-[10px] text-ink-secondary">
-              <TerminalSquare size={11} className="shrink-0" />
-              POST 127.0.0.1:7869/api/hosts
-            </span>
-            <button
-              className="mt-1 w-max rounded-md bg-series-1/20 px-3 py-1.5 text-xs font-medium text-series-1 hover:bg-series-1/30"
-              onClick={() => setWizardOpen(true)}
-            >
-              Add your first host
-            </button>
-          </div>
+          <EmptyState
+            title="No remote systems yet"
+            hint={
+              <span className="flex flex-col items-center gap-2">
+                <span>
+                  Add any Linux machine with SSH — monitoring starts instantly,
+                  no install needed. Scripts can register hosts too:
+                </span>
+                <span className="flex items-center gap-1.5 rounded-md bg-black/25 px-2 py-1.5 font-mono text-[10px] text-ink-secondary">
+                  <TerminalSquare size={11} className="shrink-0" />
+                  POST 127.0.0.1:7869/api/hosts
+                </span>
+              </span>
+            }
+            action={
+              <Button variant="primary" size="sm" onClick={() => setWizardOpen(true)}>
+                Add your first host
+              </Button>
+            }
+          />
         )}
       </div>
 

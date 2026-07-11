@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { SearchX } from "lucide-react";
+import { Search, SearchX } from "lucide-react";
 import { listPackages, uninstallPackage } from "../lib/tauri";
+import { Banner } from "../components/ui/Banner";
+import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
 import { LoadingState } from "../components/ui/LoadingState";
 import { formatKb } from "../lib/format";
 import { Modal } from "../components/ui/Modal";
@@ -59,26 +62,19 @@ export function Uninstaller() {
             {packages.length} packages
           </span>
         </h1>
-        <input
+        <Input
+          icon={Search}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search packages…"
-          className="w-64 rounded-md border border-border bg-page px-3 py-1.5 text-sm text-ink-primary placeholder:text-ink-muted focus:border-series-1 focus:outline-none"
+          className="w-64"
         />
       </div>
 
-      {message && (
-        <div className="mb-3 rounded-md border border-status-good/40 bg-status-good/10 px-3 py-2 text-sm text-status-good">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div className="mb-3 rounded-md border border-status-critical/40 bg-status-critical/10 px-3 py-2 text-sm text-status-critical">
-          {error}
-        </div>
-      )}
+      {message && <Banner tone="good">{message}</Banner>}
+      {error && <Banner>{error}</Banner>}
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface">
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-surface">
         {loading ? (
           <LoadingState label="Loading packages…" />
         ) : filtered.length === 0 ? (
@@ -90,7 +86,7 @@ export function Uninstaller() {
           />
         ) : (
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-surface">
+            <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--color-border)]">
               <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
                 <th className="px-3 py-2 font-medium">Package</th>
                 <th className="px-3 py-2 font-medium">Summary</th>
@@ -114,12 +110,9 @@ export function Uninstaller() {
                     {formatKb(pkg.installed_size_kb)}
                   </td>
                   <td className="px-3 py-1.5 text-right">
-                    <button
-                      onClick={() => setConfirm(pkg)}
-                      className="rounded px-2 py-0.5 text-xs text-status-critical hover:bg-status-critical/15"
-                    >
+                    <Button variant="dangerSoft" size="sm" onClick={() => setConfirm(pkg)}>
                       Uninstall
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -142,20 +135,12 @@ export function Uninstaller() {
               You'll be asked to authenticate.
             </p>
             <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setConfirm(null)}
-                disabled={busy}
-                className="rounded-md px-3 py-1.5 text-sm text-ink-secondary hover:bg-white/10 disabled:opacity-40"
-              >
+              <Button variant="ghost" onClick={() => setConfirm(null)} disabled={busy}>
                 Cancel
-              </button>
-              <button
-                onClick={() => doUninstall(confirm)}
-                disabled={busy}
-                className="rounded-md bg-status-critical px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
-              >
+              </Button>
+              <Button variant="danger" onClick={() => doUninstall(confirm)} loading={busy}>
                 {busy ? "Removing…" : "Uninstall"}
-              </button>
+              </Button>
             </div>
         </Modal>
       )}

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { SearchX } from "lucide-react";
+import { Search, SearchX } from "lucide-react";
 import { listServices, serviceAction } from "../lib/tauri";
+import { Banner } from "../components/ui/Banner";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
 import { LoadingState } from "../components/ui/LoadingState";
 import type { ServiceInfo } from "../types/monitor";
 
@@ -59,21 +61,18 @@ export function Services() {
             {services.length}
           </span>
         </h1>
-        <input
+        <Input
+          icon={Search}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search services…"
-          className="w-64 rounded-md border border-border bg-page px-3 py-1.5 text-sm text-ink-primary placeholder:text-ink-muted focus:border-series-1 focus:outline-none"
+          className="w-64"
         />
       </div>
 
-      {error && (
-        <div className="mb-3 rounded-md border border-status-critical/40 bg-status-critical/10 px-3 py-2 text-sm text-status-critical">
-          {error}
-        </div>
-      )}
+      {error && <Banner>{error}</Banner>}
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface">
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-surface">
         {loading ? (
           <LoadingState label="Loading services…" />
         ) : filtered.length === 0 ? (
@@ -85,7 +84,7 @@ export function Services() {
           />
         ) : (
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-surface">
+            <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--color-border)]">
               <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
                 <th className="px-3 py-2 font-medium">Service</th>
                 <th className="px-3 py-2 font-medium">Description</th>
@@ -143,7 +142,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="rounded px-2 py-0.5 text-ink-muted hover:bg-white/10 hover:text-ink-primary disabled:opacity-40"
+      className="rounded-md border border-transparent px-2 py-0.5 text-ink-muted transition-colors duration-100 hover:border-border hover:bg-white/10 hover:text-ink-primary disabled:opacity-40"
     >
       {label}
     </button>
