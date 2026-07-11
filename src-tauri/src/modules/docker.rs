@@ -327,20 +327,27 @@ pub fn compose_projects() -> Result<Vec<ComposeProject>, String> {
         .collect())
 }
 
-/// `docker compose -f <file> up -d` for a user-picked compose file. The
-/// project name derives from the file's directory. Blocks while images pull;
-/// callers run it off-thread and show a busy state.
-pub fn compose_up_file(file: &str) -> Result<(), String> {
+/// `docker compose -f <file> up -d [--build]` for a user-picked compose
+/// file. The project name derives from the file's directory. Blocks while
+/// images pull/build; callers run it off-thread and show a busy state.
+pub fn compose_up_file(file: &str, build: bool) -> Result<(), String> {
     let file = file.trim();
     if file.is_empty() || file.starts_with('-') {
         return Err(format!("invalid compose file path: {file:?}"));
     }
-    run("docker", &["compose", "-f", file, "up", "-d"])
-        .map_err(friendly)
-        .map(drop)
+    let mut args = vec!["compose", "-f", file, "up", "-d"];
+    if build {
+        args.push("--build");
+    }
+    run("docker", &args).map_err(friendly).map(drop)
 }
 
-pub fn compose_action(name: &str, config_files: &[String], verb: &str) -> Result<(), String> {
+pub fn compose_action(
+    name: &str,
+    config_files: &[String],
+    verb: &str,
+    build: bool,
+) -> Result<(), String> {
     let name = safe_ref(name)?;
     let mut args: Vec<&str> = vec!["compose", "-p", name];
     // up needs the config files; the others resolve containers by project label.
@@ -354,11 +361,41 @@ pub fn compose_action(name: &str, config_files: &[String], verb: &str) -> Result
         }
     }
     match verb {
-        "up" => args.extend(["up", "-d"]),
+        "up" => {
+            args.extend(["up", "-d"]);
+            if build {
+                args.push("--build");
+            }
+        }
         "down" | "stop" | "start" | "restart" => args.push(verb),
         other => return Err(format!("unsupported compose action: {other}")),
     }
     run("docker", &args).map_err(friendly).map(drop)
+}
+
+/// Interleaved logs of every container in the project. Like `logs()`, both
+/// output streams are merged — compose writes container output to stdout and
+/// its own diagnostics to stderr.
+pub fn compose_logs(name: &str, tail: u32) -> Result<String, String> {
+    let name = safe_ref(name)?;
+    let output = std::process::Command::new("docker")
+        .args(["compose", "-p", name, "logs", "--tail", &tail.to_string()])
+        .output()
+        .map_err(|e| friendly(format!("Failed to run docker: {e}")))?;
+    if !output.status.success() {
+        return Err(friendly(
+            String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        ));
+    }
+    let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !stderr.trim().is_empty() {
+        if !text.is_empty() && !text.ends_with('\n') {
+            text.push('\n');
+        }
+        text.push_str(&stderr);
+    }
+    Ok(text)
 }
 
 // --- Disk usage + prune ---
@@ -652,9 +689,9 @@ mod tests {
 
     #[test]
     fn compose_up_file_rejects_flags() {
-        assert!(compose_up_file("--privileged").is_err());
-        assert!(compose_up_file("").is_err());
-        assert!(compose_up_file("  ").is_err());
+        assert!(compose_up_file("--privileged", false).is_err());
+        assert!(compose_up_file("", false).is_err());
+        assert!(compose_up_file("  ", true).is_err());
     }
 
     #[test]

@@ -1,19 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FileClock, FilePlus, Layers } from "lucide-react";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { Check, Copy, FileClock, FilePlus, Layers } from "lucide-react";
 import {
   composeAction,
   composeFileForget,
   composeFilesList,
+  composeLogs,
   composeUpFile,
   listComposeProjects,
 } from "../../lib/tauri";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
+import { Drawer } from "../../components/ui/Drawer";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingState } from "../../components/ui/LoadingState";
 import type { ComposeProject } from "../../types/monitor";
 import { ErrorBanner, HeadRow, RowButton, TableShell } from "./shared";
+
+const TAIL_OPTIONS = [100, 300, 1000, 5000] as const;
 
 /** compose ls status like "running(2)" or "running(1), exited(1)". */
 function statusCls(status: string): string {
@@ -37,6 +42,56 @@ export function Compose({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // `up` runs with --build when set; applies to row Up and Add compose file.
+  const [buildOnUp, setBuildOnUp] = useState(false);
+  const [logsFor, setLogsFor] = useState<string | null>(null);
+  const [logs, setLogs] = useState<string | null>(null);
+  const [logTail, setLogTail] = useState<number>(300);
+  const [follow, setFollow] = useState(true);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
+
+  const copyLogs = () => {
+    if (!logs) return;
+    writeText(logs)
+      .then(() => {
+        setCopied(true);
+        clearTimeout(copiedTimer.current);
+        copiedTimer.current = setTimeout(() => setCopied(false), 1500);
+      })
+      .catch((e) => setError(String(e)));
+  };
+
+  // Logs drawer: initial fetch + live tail while open.
+  useEffect(() => {
+    if (!logsFor) {
+      setLogs(null);
+      return;
+    }
+    let cancelled = false;
+    const load = () =>
+      composeLogs(logsFor, logTail)
+        .then((text) => {
+          if (!cancelled) setLogs(text);
+        })
+        .catch((e) => {
+          if (!cancelled) setLogs(String(e));
+        });
+    load();
+    const id = setInterval(load, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [logsFor, logTail]);
+
+  useEffect(() => {
+    if (follow && logs !== null) {
+      logsEndRef.current?.scrollIntoView({ block: "end" });
+    }
+  }, [logs, follow]);
 
   const refresh = useCallback(() => {
     listComposeProjects()
@@ -58,7 +113,7 @@ export function Compose({
     setBusy(p.name);
     setError(null);
     try {
-      await composeAction(p.name, p.config_files, verb);
+      await composeAction(p.name, p.config_files, verb, verb === "up" && buildOnUp);
       refresh();
       onChanged();
     } catch (e) {
@@ -72,7 +127,7 @@ export function Compose({
     setBusy(file);
     setError(null);
     try {
-      await composeUpFile(file);
+      await composeUpFile(file, buildOnUp);
       refresh();
       onChanged();
     } catch (e) {
@@ -100,7 +155,7 @@ export function Compose({
     setAdding(true);
     setError(null);
     try {
-      await composeUpFile(file);
+      await composeUpFile(file, buildOnUp);
       refresh();
       onChanged();
     } catch (e) {
@@ -117,11 +172,25 @@ export function Compose({
     return <LoadingState label="Listing compose projects…" className="h-full" />;
   }
 
-  const addButton = (
-    <Button variant="primary" onClick={addProject} loading={adding}>
-      {!adding && <FilePlus size={13} />}
-      {adding ? "Starting…" : "Add compose file"}
-    </Button>
+  const toolbarRight = (
+    <div className="flex items-center gap-3">
+      <label
+        className="flex cursor-pointer items-center gap-1.5 text-xs text-ink-muted"
+        title="Run docker compose up with --build (rebuilds images from their Dockerfiles)"
+      >
+        <input
+          type="checkbox"
+          checked={buildOnUp}
+          onChange={(e) => setBuildOnUp(e.target.checked)}
+          className="accent-series-1"
+        />
+        Build on up
+      </label>
+      <Button variant="primary" onClick={addProject} loading={adding}>
+        {!adding && <FilePlus size={13} />}
+        {adding ? (buildOnUp ? "Building…" : "Starting…") : "Add compose file"}
+      </Button>
+    </div>
   );
 
   // Remembered files whose project isn't in `compose ls` anymore (downed or
@@ -140,7 +209,7 @@ export function Compose({
                 projects.length + savedOnly.length === 1 ? "" : "s"
               } · ${runningCount} running`}
         </span>
-        {addButton}
+        {toolbarRight}
       </div>
 
       {error && <ErrorBanner message={error} />}
@@ -180,6 +249,7 @@ export function Compose({
                       <RowButton label="Restart" disabled={isBusy} onClick={() => act(p, "restart")} />
                       <RowButton label="Stop" disabled={isBusy} onClick={() => act(p, "stop")} />
                       <RowButton label="Down" disabled={isBusy} onClick={() => act(p, "down")} />
+                      <RowButton label="Logs" disabled={false} onClick={() => setLogsFor(p.name)} />
                     </div>
                   </td>
                 </tr>
@@ -216,6 +286,64 @@ export function Compose({
             })}
           </tbody>
         </TableShell>
+      )}
+
+      {logsFor && (
+        <Drawer wide title={`Logs · ${logsFor}`} onClose={() => setLogsFor(null)}>
+          <div className="mb-3 flex items-center gap-3 text-xs">
+            <label className="flex items-center gap-1.5 text-ink-muted">
+              Tail
+              <select
+                value={logTail}
+                onChange={(e) => setLogTail(Number(e.target.value))}
+                className="rounded-md border border-border bg-page px-1.5 py-0.5 text-ink-primary focus:border-series-1 focus:outline-none"
+              >
+                {TAIL_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex cursor-pointer items-center gap-1.5 text-ink-muted">
+              <input
+                type="checkbox"
+                checked={follow}
+                onChange={(e) => setFollow(e.target.checked)}
+                className="accent-series-1"
+              />
+              Follow
+            </label>
+            <Button
+              size="sm"
+              onClick={copyLogs}
+              disabled={!logs || logs.trim() === ""}
+              className="ml-auto"
+            >
+              {copied ? (
+                <>
+                  <Check size={11} className="text-status-good" /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy size={11} /> Copy
+                </>
+              )}
+            </Button>
+          </div>
+          {logs === null ? (
+            <LoadingState label="Fetching logs…" />
+          ) : logs.trim() === "" ? (
+            <p className="text-sm text-ink-muted">No log output.</p>
+          ) : (
+            <>
+              <pre className="whitespace-pre-wrap break-all rounded-md bg-black/25 p-3 font-mono text-[11px] leading-relaxed text-ink-secondary">
+                {logs}
+              </pre>
+              <div ref={logsEndRef} />
+            </>
+          )}
+        </Drawer>
       )}
     </div>
   );

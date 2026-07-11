@@ -176,19 +176,31 @@ pub async fn compose_action(
     name: String,
     config_files: Vec<String>,
     verb: String,
+    build: bool,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        docker::compose_action(&name, &config_files, &verb)
+        docker::compose_action(&name, &config_files, &verb, build)
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub async fn compose_up_file(app: tauri::AppHandle, file: String) -> Result<(), String> {
+pub async fn compose_logs(name: String, tail: u32) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || docker::compose_logs(&name, tail))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn compose_up_file(
+    app: tauri::AppHandle,
+    file: String,
+    build: bool,
+) -> Result<(), String> {
     let data_dir = crate::commands_hosts::data_dir(&app);
     tauri::async_runtime::spawn_blocking(move || {
-        docker::compose_up_file(&file)?;
+        docker::compose_up_file(&file, build)?;
         // Remember it so the project survives `down` and app restarts.
         docker_prefs::remember_compose_file(&data_dir, &file)
     })

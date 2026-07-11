@@ -158,14 +158,20 @@ export function composeAction(
   name: string,
   configFiles: string[],
   verb: string,
+  build = false,
 ): Promise<void> {
-  return invoke("compose_action", { name, configFiles, verb });
+  return invoke("compose_action", { name, configFiles, verb, build });
+}
+
+/** Interleaved logs of every container in the project. */
+export function composeLogs(name: string, tail: number): Promise<string> {
+  return invoke("compose_logs", { name, tail });
 }
 
 /** compose up -d from a picked file; project name derives from its directory.
  * On success the file is remembered (see composeFilesList). */
-export function composeUpFile(file: string): Promise<void> {
-  return invoke("compose_up_file", { file });
+export function composeUpFile(file: string, build = false): Promise<void> {
+  return invoke("compose_up_file", { file, build });
 }
 
 /** Compose files the user has added, remembered across down/restart. */

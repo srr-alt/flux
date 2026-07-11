@@ -99,6 +99,7 @@ pub fn run() {
             commands_modules::list_compose_projects,
             commands_modules::compose_action,
             commands_modules::compose_up_file,
+            commands_modules::compose_logs,
             commands_modules::compose_files_list,
             commands_modules::compose_file_forget,
             commands_modules::docker_shell_history,
