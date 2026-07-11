@@ -1,5 +1,7 @@
 pub mod cleaner;
 pub mod docker;
+pub mod docker_prefs;
+pub mod docker_shell;
 pub mod hardware;
 pub mod services;
 pub mod startup;

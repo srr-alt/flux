@@ -46,7 +46,7 @@ pub struct TestResult {
     pub kernel: String,
 }
 
-fn data_dir(app: &AppHandle) -> PathBuf {
+pub(crate) fn data_dir(app: &AppHandle) -> PathBuf {
     app.path()
         .app_data_dir()
         .expect("app data dir unavailable")

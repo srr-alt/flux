@@ -2,23 +2,30 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   CleanCategory,
+  ComposeProject,
+  ContainerDetail,
   ContainerInfo,
   ContainerStats,
   CpuDetails,
   DiskSnapshot,
+  DiskUsageRow,
   GpuProcess,
   GpuSnapshot,
   HwmonChip,
+  ImageInfo,
   InfoSection,
+  NetworkInfo,
   PackageInfo,
   ProcessDetail,
   ProcessInfo,
   ProcessQuery,
+  RunSpec,
   ServiceInfo,
   StartupApp,
   SystemInfo,
   TickSnapshot,
   UsageLogStatus,
+  VolumeInfo,
 } from "../types/monitor";
 import type { HostStatus, HostView, NewHost, TestResult } from "../types/hosts";
 
@@ -105,6 +112,113 @@ export function containerAction(id: string, verb: string): Promise<void> {
 
 export function containerLogs(id: string, tail: number): Promise<string> {
   return invoke("container_logs", { id, tail });
+}
+
+export function inspectContainer(id: string): Promise<ContainerDetail> {
+  return invoke("inspect_container", { id });
+}
+
+export function runContainer(spec: RunSpec): Promise<void> {
+  return invoke("run_container", { spec });
+}
+
+export function listImages(): Promise<ImageInfo[]> {
+  return invoke("list_images");
+}
+
+export function imageRemove(id: string): Promise<void> {
+  return invoke("image_remove", { id });
+}
+
+export function imagePull(reference: string): Promise<void> {
+  return invoke("image_pull", { reference });
+}
+
+export function listVolumes(): Promise<VolumeInfo[]> {
+  return invoke("list_volumes");
+}
+
+export function volumeRemove(name: string): Promise<void> {
+  return invoke("volume_remove", { name });
+}
+
+export function listNetworks(): Promise<NetworkInfo[]> {
+  return invoke("list_networks");
+}
+
+export function networkRemove(id: string): Promise<void> {
+  return invoke("network_remove", { id });
+}
+
+export function listComposeProjects(): Promise<ComposeProject[]> {
+  return invoke("list_compose_projects");
+}
+
+export function composeAction(
+  name: string,
+  configFiles: string[],
+  verb: string,
+): Promise<void> {
+  return invoke("compose_action", { name, configFiles, verb });
+}
+
+/** compose up -d from a picked file; project name derives from its directory.
+ * On success the file is remembered (see composeFilesList). */
+export function composeUpFile(file: string): Promise<void> {
+  return invoke("compose_up_file", { file });
+}
+
+/** Compose files the user has added, remembered across down/restart. */
+export function composeFilesList(): Promise<string[]> {
+  return invoke("compose_files_list");
+}
+
+export function composeFileForget(file: string): Promise<void> {
+  return invoke("compose_file_forget", { file });
+}
+
+export function dockerDiskUsage(): Promise<DiskUsageRow[]> {
+  return invoke("docker_disk_usage");
+}
+
+export function dockerPrune(target: string): Promise<string> {
+  return invoke("docker_prune", { target });
+}
+
+// Interactive container shell: PTY output streams on SHELL_EVENT with
+// payload { session, data: number[], exited }.
+export const SHELL_EVENT = "docker://shell";
+
+export interface ShellOutput {
+  session: number;
+  data: number[];
+  exited: boolean;
+}
+
+export function dockerShellOpen(
+  id: string,
+  name: string,
+  cols: number,
+  rows: number,
+): Promise<number> {
+  return invoke("docker_shell_open", { id, name, cols, rows });
+}
+
+/** Commands previously typed in this container's shell, oldest first. */
+export function dockerShellHistory(container: string): Promise<string[]> {
+  return invoke("docker_shell_history", { container });
+}
+
+export function dockerShellWrite(session: number, data: number[]): Promise<void> {
+  return invoke("docker_shell_write", { session, data });
+}
+
+export function dockerShellResize(session: number, cols: number, rows: number): Promise<void> {
+  return invoke("docker_shell_resize", { session, cols, rows });
+}
+
+export function dockerShellClose(session: number): Promise<void> {
+  return invoke("docker_shell_close", { session });
 }
 
 // --- Services ---

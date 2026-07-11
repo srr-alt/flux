@@ -33,4 +33,7 @@ ssh2 = { version = "0.9", features = ["vendored-openssl"] }
 uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 tiny_http = "0.12"
+portable-pty = "0.9"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
 

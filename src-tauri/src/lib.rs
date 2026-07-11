@@ -59,7 +59,10 @@ pub fn run() {
     }));
     builder
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
+        .manage(modules::docker_shell::ShellSessions::default())
         .invoke_handler(tauri::generate_handler![
             commands_monitor::get_system_info,
             commands_monitor::get_initial_snapshot,
@@ -84,6 +87,27 @@ pub fn run() {
             commands_modules::container_stats,
             commands_modules::container_action,
             commands_modules::container_logs,
+            commands_modules::inspect_container,
+            commands_modules::run_container,
+            commands_modules::list_images,
+            commands_modules::image_remove,
+            commands_modules::image_pull,
+            commands_modules::list_volumes,
+            commands_modules::volume_remove,
+            commands_modules::list_networks,
+            commands_modules::network_remove,
+            commands_modules::list_compose_projects,
+            commands_modules::compose_action,
+            commands_modules::compose_up_file,
+            commands_modules::compose_files_list,
+            commands_modules::compose_file_forget,
+            commands_modules::docker_shell_history,
+            commands_modules::docker_disk_usage,
+            commands_modules::docker_prune,
+            commands_modules::docker_shell_open,
+            commands_modules::docker_shell_write,
+            commands_modules::docker_shell_resize,
+            commands_modules::docker_shell_close,
             commands_settings::set_refresh_interval,
             commands_settings::start_usage_log,
             commands_settings::stop_usage_log,

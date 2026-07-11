@@ -144,6 +144,77 @@ export interface ContainerStats {
   pids: number;
 }
 
+export interface ImageInfo {
+  id: string;
+  repository: string;
+  tag: string;
+  size: string;
+  created_since: string;
+  containers: string;
+}
+
+export interface VolumeInfo {
+  name: string;
+  driver: string;
+  mountpoint: string;
+}
+
+export interface NetworkInfo {
+  id: string;
+  name: string;
+  driver: string;
+  scope: string;
+  builtin: boolean;
+}
+
+export interface ComposeProject {
+  name: string;
+  status: string;
+  config_files: string[];
+}
+
+export interface DiskUsageRow {
+  kind: string;
+  total: string;
+  active: string;
+  size: string;
+  reclaimable: string;
+}
+
+export interface MountInfo {
+  kind: string;
+  source: string;
+  destination: string;
+  rw: boolean;
+}
+
+export interface PortBinding {
+  container_port: string;
+  host: string;
+}
+
+export interface ContainerDetail {
+  id: string;
+  name: string;
+  image: string;
+  created: string;
+  restart_policy: string;
+  cmd: string[];
+  entrypoint: string[];
+  env: string[];
+  mounts: MountInfo[];
+  ports: PortBinding[];
+  networks: [string, string][];
+}
+
+export interface RunSpec {
+  image: string;
+  name: string | null;
+  ports: string[];
+  env: string[];
+  volumes: string[];
+}
+
 export interface SocketInfo {
   proto: string;
   local: string;

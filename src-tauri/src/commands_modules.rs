@@ -1,4 +1,6 @@
-use crate::modules::{cleaner, docker, hardware, services, startup, uninstaller};
+use crate::modules::{
+    cleaner, docker, docker_prefs, docker_shell, hardware, services, startup, uninstaller,
+};
 
 // --- Services ---
 
@@ -96,6 +98,171 @@ pub async fn container_logs(id: String, tail: u32) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || docker::logs(&id, tail))
         .await
         .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn inspect_container(id: String) -> Result<docker::ContainerDetail, String> {
+    tauri::async_runtime::spawn_blocking(move || docker::inspect(&id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn run_container(spec: docker::RunSpec) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || docker::run_container(&spec))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn list_images() -> Result<Vec<docker::ImageInfo>, String> {
+    tauri::async_runtime::spawn_blocking(docker::images)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn image_remove(id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || docker::image_remove(&id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn image_pull(reference: String) -> Result<(), String> {
+    // Blocks for the whole download; UI shows a busy state.
+    tauri::async_runtime::spawn_blocking(move || docker::image_pull(&reference))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn list_volumes() -> Result<Vec<docker::VolumeInfo>, String> {
+    tauri::async_runtime::spawn_blocking(docker::volumes)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn volume_remove(name: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || docker::volume_remove(&name))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn list_networks() -> Result<Vec<docker::NetworkInfo>, String> {
+    tauri::async_runtime::spawn_blocking(docker::networks)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn network_remove(id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || docker::network_remove(&id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn list_compose_projects() -> Result<Vec<docker::ComposeProject>, String> {
+    tauri::async_runtime::spawn_blocking(docker::compose_projects)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn compose_action(
+    name: String,
+    config_files: Vec<String>,
+    verb: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        docker::compose_action(&name, &config_files, &verb)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn compose_up_file(app: tauri::AppHandle, file: String) -> Result<(), String> {
+    let data_dir = crate::commands_hosts::data_dir(&app);
+    tauri::async_runtime::spawn_blocking(move || {
+        docker::compose_up_file(&file)?;
+        // Remember it so the project survives `down` and app restarts.
+        docker_prefs::remember_compose_file(&data_dir, &file)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub fn compose_files_list(app: tauri::AppHandle) -> Vec<String> {
+    docker_prefs::compose_files(&crate::commands_hosts::data_dir(&app))
+}
+
+#[tauri::command]
+pub fn compose_file_forget(app: tauri::AppHandle, file: String) -> Result<(), String> {
+    docker_prefs::forget_compose_file(&crate::commands_hosts::data_dir(&app), &file)
+}
+
+#[tauri::command]
+pub async fn docker_disk_usage() -> Result<Vec<docker::DiskUsageRow>, String> {
+    // system df walks image/layer sizes; slow on big daemons.
+    tauri::async_runtime::spawn_blocking(docker::disk_usage)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn docker_prune(target: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || docker::prune(&target))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+// --- Docker shell (interactive exec) ---
+
+#[tauri::command]
+pub fn docker_shell_open(
+    app: tauri::AppHandle,
+    sessions: tauri::State<docker_shell::ShellSessions>,
+    id: String,
+    name: String,
+    cols: u16,
+    rows: u16,
+) -> Result<u32, String> {
+    let data_dir = crate::commands_hosts::data_dir(&app);
+    docker_shell::open(app, &sessions, &id, &name, data_dir, cols, rows)
+}
+
+#[tauri::command]
+pub fn docker_shell_history(app: tauri::AppHandle, container: String) -> Vec<String> {
+    docker_prefs::shell_history(&crate::commands_hosts::data_dir(&app), &container)
+}
+
+#[tauri::command]
+pub fn docker_shell_write(
+    sessions: tauri::State<docker_shell::ShellSessions>,
+    session: u32,
+    data: Vec<u8>,
+) -> Result<(), String> {
+    docker_shell::write(&sessions, session, data)
+}
+
+#[tauri::command]
+pub fn docker_shell_resize(
+    sessions: tauri::State<docker_shell::ShellSessions>,
+    session: u32,
+    cols: u16,
+    rows: u16,
+) -> Result<(), String> {
+    docker_shell::resize(&sessions, session, cols, rows)
+}
+
+#[tauri::command]
+pub fn docker_shell_close(sessions: tauri::State<docker_shell::ShellSessions>, session: u32) {
+    docker_shell::close(&sessions, session)
 }
 
 // --- Hardware info ---
