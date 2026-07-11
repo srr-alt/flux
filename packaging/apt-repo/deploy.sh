@@ -25,6 +25,7 @@ cp -a "$PUBLISH_DIR"/. "$WORK/"
 # Pages runs Jekyll by default; .nojekyll disables it so nothing is filtered
 touch "$WORK/.nojekyll"
 cp "$DIR/pages-README.md" "$WORK/README.md"
+cp "$DIR/setup.sh" "$WORK/setup.sh"
 
 cd "$WORK"
 git init -q -b main

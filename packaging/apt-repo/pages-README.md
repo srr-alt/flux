@@ -6,6 +6,15 @@ Supported Ubuntu releases: **22.04 (jammy)**, **24.04 (noble)**, **26.04 (resolu
 
 ## Install
 
+One command — registers the key + repo and installs Flux:
+
+```bash
+curl -fsSL https://ydvsahil03.github.io/flux-apt/setup.sh | sudo bash
+```
+
+<details>
+<summary>Manual setup (no curl-pipe)</summary>
+
 ```bash
 # 1. Import the signing key
 sudo install -d -m 0755 /etc/apt/keyrings
@@ -20,6 +29,8 @@ echo "deb [signed-by=/etc/apt/keyrings/flux.gpg] https://ydvsahil03.github.io/fl
 sudo apt update
 sudo apt install flux
 ```
+
+</details>
 
 ## Key fingerprint
 

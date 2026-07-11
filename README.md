@@ -32,14 +32,25 @@ native speed. Styled after Linear: cool dark palette, Inter, hairline borders.
 Supported: 22.04 (jammy), 24.04 (noble), 26.04 (resolute).
 
 ```bash
+curl -fsSL https://ydvsahil03.github.io/flux-apt/setup.sh | sudo bash
+```
+
+That registers the signed apt repo and installs Flux; updates then arrive
+via normal `apt upgrade`.
+
+<details>
+<summary>Manual setup (no curl-pipe)</summary>
+
+```bash
 sudo install -d -m 0755 /etc/apt/keyrings
 curl -fsSL https://ydvsahil03.github.io/flux-apt/pubkey.gpg | sudo gpg --dearmor --yes -o /etc/apt/keyrings/flux.gpg
 echo "deb [signed-by=/etc/apt/keyrings/flux.gpg] https://ydvsahil03.github.io/flux-apt $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/flux.list
 sudo apt update && sudo apt install flux
 ```
 
-Updates arrive via normal `apt upgrade`. Standalone `.deb`s and the static
-`flux-agent-linux-amd64` binary are on the
+</details>
+
+Standalone `.deb`s and the static `flux-agent-linux-amd64` binary are on the
 [releases page](https://github.com/ydvsahil03/vantage/releases).
 
 Ubuntu 20.04 is not supported (Tauri v2 needs webkit2gtk-4.1).
