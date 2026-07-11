@@ -26,9 +26,3 @@ packaging/dist/
 
 # Rust workspace build output
 target
-
-# Snapcraft build output
-*.snap
-parts/
-stage/
-prime/
