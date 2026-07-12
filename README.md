@@ -5,7 +5,15 @@ machine and every other box you can SSH into — no server, no agents to
 babysit, no cloud.
 
 Built with Tauri v2 (Rust) + React, so it idles light and draws charts at
-native speed. Styled after Linear: cool dark palette, Inter, hairline borders.
+native speed. Glass-dark UI: pure-black canvas, ambient glows, translucent
+panels, Inter + JetBrains Mono.
+
+![Performance](docs/screenshots/performance.png)
+
+| | |
+|---|---|
+| ![Fleet](docs/screenshots/fleet.png) | ![Processes](docs/screenshots/processes.png) |
+| ![Docker](docs/screenshots/docker.png) | ![Sensors](docs/screenshots/sensors.png) |
 
 ## What it does
 
@@ -22,10 +30,18 @@ native speed. Styled after Linear: cool dark palette, Inter, hairline borders.
   - Trust-on-first-use host keys, own ed25519 identity — your `~/.ssh`
     is never touched. Passwords are used once to install the key, never
     stored.
+- **Docker** — containers (live CPU/mem sparklines, logs, inspect, real
+  `docker exec` shell via xterm.js), images, volumes, networks, compose
+  projects (up/down/build/logs), disk usage + prune.
+- **Sensors** — hwmon temperatures, fans and voltages with history chart.
 - **Tools** — systemd services, startup apps, system cleaner, package
   uninstaller, hardware info.
 - **HTTP API** — register hosts from scripts/CI: see [docs/API.md](docs/API.md).
 - **Usage logging** — record samples to CSV for later analysis.
+- **Privacy lock** — Fleet, the Assistant and the machine picker hide behind
+  a password. Fresh installs ship locked; the factory password is
+  `Admin@123#` — unlock in Settings → Privacy lock and set your own.
+  It's a screen-privacy gate, not a security boundary.
 
 ## Install (Ubuntu)
 
