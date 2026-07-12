@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 /** Canonical field styling: recessed against bg-surface panels, accent
  * border on focus (the global :focus-visible outline covers keyboard nav). */
 const BASE =
-  "rounded-md border border-border bg-page px-3 py-1.5 text-sm text-ink-primary placeholder:text-ink-muted transition-colors duration-100 focus:border-series-1 focus:outline-none";
+  "rounded-xl border border-white/10 bg-page px-3 py-1.5 text-sm text-ink-primary placeholder:text-ink-muted transition-colors duration-100 focus:border-series-1 focus:outline-none";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Leading icon rendered inside the field. */

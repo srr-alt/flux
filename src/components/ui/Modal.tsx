@@ -93,7 +93,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
-        className={`relative max-h-[85vh] animate-pop-in overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-xl shadow-black/40 outline-none ${width}`}
+        className={`glass-overlay relative max-h-[85vh] animate-pop-in overflow-y-auto rounded-[22px] border border-white/10 p-5 shadow-[0_24px_64px_rgba(0,0,0,.6),inset_0_1px_0_rgba(255,255,255,.04)] outline-none ${width}`}
       >
         {showClose && (
           <button

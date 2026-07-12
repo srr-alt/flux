@@ -56,7 +56,7 @@ export function Startup() {
         {apps.map((app) => (
           <div
             key={app.file_name}
-            className="flex items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3"
+            className="flex items-center gap-4 glass rounded-2xl border border-border px-4 py-3"
           >
             <label className="relative inline-flex cursor-pointer items-center">
               <input

@@ -1,4 +1,5 @@
-import { Activity, MemoryStick, Network, Plus, Server, TerminalSquare } from "lucide-react";
+import { Plus, TerminalSquare } from "lucide-react";
+import { ScreenHeader } from "../components/layout/ScreenHeader";
 import { useEffect, useMemo, useState } from "react";
 import { AddHostWizard } from "../components/hosts/AddHostWizard";
 import { HostTile } from "../components/hosts/HostTile";
@@ -18,26 +19,24 @@ interface FleetProps {
 }
 
 function StatChip({
-  icon: Icon,
   label,
   value,
+  unit,
+  tone = "text-ink-primary",
 }: {
-  icon: typeof Activity;
   label: string;
   value: string;
+  unit?: string;
+  tone?: string;
 }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2">
-      <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5">
-        <Icon size={13} className="text-ink-secondary" />
-      </span>
-      <div className="leading-tight">
-        <div className="text-sm font-semibold tabular-nums text-ink-primary">
-          {value}
-        </div>
-        <div className="text-[10px] uppercase tracking-wide text-ink-muted">
-          {label}
-        </div>
+    <div className="glass rounded-2xl border border-border px-4 py-3">
+      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+        {label}
+      </div>
+      <div className={`truncate text-[19px] font-bold tabular-nums tracking-tight ${tone}`}>
+        {value}
+        {unit && <span className="text-xs font-medium text-ink-muted"> {unit}</span>}
       </div>
     </div>
   );
@@ -125,43 +124,42 @@ export function Fleet({ onNavigate }: FleetProps) {
   }, [hosts, statuses, byHost, localSeries.latest]);
 
   return (
-    <div className="p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-ink-primary">Fleet</h1>
-          <p className="text-xs text-ink-muted">
-            One dashboard for every machine — click a tile to inspect
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => setWizardOpen(true)}>
+    <>
+      <ScreenHeader
+        title="Fleet"
+        sub={hosts.length > 0 ? `local + ${hosts.length} remote · ssh` : "local · ssh"}
+      />
+      <div className="p-5">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatChip
+          label="online"
+          value={String(totals.online)}
+          unit={`/ ${totals.total}`}
+          tone="text-status-good"
+        />
+        <StatChip
+          label="avg cpu"
+          value={totals.cpuAvg.toFixed(0)}
+          unit="%"
+          tone={totals.cpuAvg > 60 ? "text-status-warning" : "text-ink-primary"}
+        />
+        <StatChip label="memory in use" value={formatKb(totals.memUsedKb)} />
+        <StatChip
+          label="aggregate traffic"
+          value={formatBytesPerSec(totals.netDown + totals.netUp)}
+        />
+      </div>
+
+      <div className="mb-4 flex items-center">
+        <span className="text-xs text-ink-muted">
+          {totals.total} machine{totals.total === 1 ? "" : "s"}
+        </span>
+        <Button variant="primary" className="ml-auto" onClick={() => setWizardOpen(true)}>
           <Plus size={14} /> Add host
         </Button>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <StatChip
-          icon={Server}
-          label="systems online"
-          value={`${totals.online} / ${totals.total}`}
-        />
-        <StatChip
-          icon={Activity}
-          label="avg cpu"
-          value={`${totals.cpuAvg.toFixed(0)}%`}
-        />
-        <StatChip
-          icon={MemoryStick}
-          label="memory in use"
-          value={formatKb(totals.memUsedKb)}
-        />
-        <StatChip
-          icon={Network}
-          label="fleet traffic"
-          value={`↓${formatBytesPerSec(totals.netDown)} ↑${formatBytesPerSec(totals.netUp)}`}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <HostTile
           name={localInfo?.hostname ?? "This machine"}
           isLocal
@@ -217,6 +215,12 @@ export function Fleet({ onNavigate }: FleetProps) {
         )}
       </div>
 
+      {hosts.length > 0 && (
+        <div className="mt-4 font-mono text-[11px] text-ink-faint/80">
+          hosts can also be registered by scripts · POST 127.0.0.1:7869/api/hosts
+        </div>
+      )}
+
       {wizardOpen && <AddHostWizard onClose={() => setWizardOpen(false)} />}
       {installTarget && (
         <InstallDebModal
@@ -225,6 +229,7 @@ export function Fleet({ onNavigate }: FleetProps) {
           onClose={() => setInstallTarget(null)}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }

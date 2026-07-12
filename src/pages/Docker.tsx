@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Play, Trash2 } from "lucide-react";
 import { containerStats, dockerDiskUsage, dockerPrune } from "../lib/tauri";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
+import { ScreenHeader } from "../components/layout/ScreenHeader";
+import { useSelectedHostName } from "../hooks/useSelectedHostName";
 import { useDockerStore } from "../state/dockerStore";
 import type { DiskUsageRow } from "../types/monitor";
 import { Compose } from "./docker/Compose";
@@ -25,8 +26,44 @@ const PRUNE_TARGETS: { id: string; label: string; detail: string }[] = [
 
 const STATS_POLL_MS = 5000;
 
+/** docker system df sizes: "22.05GB (76%)", "8.192kB", "0B" — decimal units. */
+function parseDockerSize(s: string): number {
+  const m = /^([\d.]+)\s*(B|kB|MB|GB|TB)/.exec(s.trim());
+  if (!m) return 0;
+  const mult = { B: 1, kB: 1e3, MB: 1e6, GB: 1e9, TB: 1e12 }[m[2] as "B"];
+  return parseFloat(m[1]) * mult;
+}
+
+function formatDockerSize(bytes: number): string {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`;
+  if (bytes >= 1e3) return `${(bytes / 1e3).toFixed(0)} kB`;
+  return `${bytes.toFixed(0)} B`;
+}
+
+/** Design strip: Images / Containers / Volumes sizes + one amber
+ * "Reclaimable … — prune" segment folding in every row's reclaimable. */
+function usageSegments(usage: DiskUsageRow[]) {
+  const LABELS: Record<string, string> = {
+    Images: "Images",
+    Containers: "Containers",
+    "Local Volumes": "Volumes",
+  };
+  const segments = usage
+    .filter((u) => LABELS[u.kind])
+    .map((u) => ({ label: LABELS[u.kind], value: u.size, prune: false }));
+  const reclaimable = usage.reduce((sum, u) => sum + parseDockerSize(u.reclaimable), 0);
+  segments.push({
+    label: "Reclaimable",
+    value: reclaimable > 0 ? `${formatDockerSize(reclaimable)} — prune` : "0 B",
+    prune: reclaimable > 0,
+  });
+  return segments;
+}
+
 export function Docker() {
   const [tab, setTab] = useState<Tab>("Containers");
+  const hostName = useSelectedHostName();
   // Bumped after any mutation so sibling tabs and the usage strip refetch.
   const [refreshToken, setRefreshToken] = useState(0);
   const bump = useCallback(() => setRefreshToken((n) => n + 1), []);
@@ -81,20 +118,18 @@ export function Docker() {
   };
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full flex-col">
+      <ScreenHeader title="Docker" sub={hostName} />
+      <div className="flex min-h-0 flex-1 flex-col p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-4">
-          <h1 className="text-lg font-semibold text-ink-primary">Docker</h1>
-          <SegmentedControl
-            size="sm"
-            options={TABS.map((t) => ({ value: t, label: t }))}
-            value={tab}
-            onChange={setTab}
-          />
-        </div>
+        <SegmentedControl
+          size="sm"
+          options={TABS.map((t) => ({ value: t, label: t }))}
+          value={tab}
+          onChange={setTab}
+        />
         <div className="flex shrink-0 items-center gap-2">
-          <Button variant="primary" size="sm" onClick={() => setRunOpen(true)}>
-            <Play size={12} />
+          <Button size="sm" onClick={() => setRunOpen(true)}>
             Run container
           </Button>
           <Button
@@ -102,51 +137,37 @@ export function Docker() {
             onClick={() => setPruneOpen(true)}
             className="hover:border-status-critical/40 hover:bg-status-critical/10 hover:text-status-critical"
           >
-            <Trash2 size={12} />
             Prune
           </Button>
         </div>
       </div>
 
       {usage.length > 0 && (
-        <div className="mb-4 inline-flex w-fit max-w-full overflow-x-auto rounded-xl border border-border bg-surface">
-          {usage.map((u, i) => {
-            const reclaimable =
-              u.reclaimable && !u.reclaimable.startsWith("0B") ? u.reclaimable : null;
-            const inner = (
-              <>
-                <div className="text-[10px] uppercase tracking-wide text-ink-muted">
-                  {u.kind}
-                  <span className="ml-1.5 normal-case tracking-normal">
-                    {u.active}/{u.total} in use
-                  </span>
-                </div>
-                <div className="mt-0.5 text-sm tabular-nums text-ink-primary">
-                  {u.size}
-                  {reclaimable && (
-                    <span className="ml-1.5 text-xs text-status-warning">
-                      {reclaimable} reclaimable
-                    </span>
-                  )}
-                </div>
-              </>
-            );
-            const border = i > 0 ? "border-l border-border" : "";
-            return reclaimable ? (
-              <button
-                key={u.kind}
-                onClick={() => setPruneOpen(true)}
-                title={`Prune ${u.kind.toLowerCase()}…`}
-                className={`px-4 py-2 text-left hover:bg-white/5 ${border}`}
+        <div className="glass mb-4 flex items-center overflow-x-auto rounded-2xl border border-border px-4 py-3">
+          {usageSegments(usage).map((seg) => (
+            <button
+              key={seg.label}
+              onClick={() => seg.prune && setPruneOpen(true)}
+              title={seg.prune ? "Prune unused resources…" : undefined}
+              className={`flex flex-1 items-center gap-2 whitespace-nowrap px-1 text-left ${
+                seg.prune ? "cursor-pointer" : "cursor-default"
+              }`}
+            >
+              <span
+                className={`h-[7px] w-[7px] shrink-0 rounded-sm ${
+                  seg.prune ? "bg-status-warning" : "bg-ink-faint"
+                }`}
+              />
+              <span className="text-[11px] text-ink-muted">{seg.label}</span>
+              <span
+                className={`font-mono text-xs font-semibold ${
+                  seg.prune ? "text-status-warning" : "text-ink-secondary"
+                }`}
               >
-                {inner}
-              </button>
-            ) : (
-              <div key={u.kind} className={`px-4 py-2 ${border}`}>
-                {inner}
-              </div>
-            );
-          })}
+                {seg.value}
+              </span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -204,6 +225,7 @@ export function Docker() {
           )}
         </Modal>
       )}
+      </div>
     </div>
   );
 }

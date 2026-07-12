@@ -18,7 +18,7 @@ function SectionCard({
   const isOpen = forceOpen || open;
 
   return (
-    <div className="rounded-xl border border-border bg-surface">
+    <div className="glass rounded-2xl border border-border">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-2 rounded-t-xl px-4 py-2.5 text-left transition-colors duration-100 hover:bg-white/5"

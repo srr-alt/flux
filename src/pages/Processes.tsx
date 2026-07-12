@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Layers, Minus, Plus, Search, SearchX } from "lucide-react";
+import { ChevronDown, ChevronRight, Layers, Search, SearchX } from "lucide-react";
 import {
   getProcessDetail,
   killProcess,
@@ -18,6 +18,8 @@ import { Drawer } from "../components/ui/Drawer";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Input } from "../components/ui/Input";
 import { LoadingState } from "../components/ui/LoadingState";
+import { ScreenHeader } from "../components/layout/ScreenHeader";
+import { useSelectedHostName } from "../hooks/useSelectedHostName";
 import { HostGate } from "../components/hosts/HostGate";
 import type { ProcessDetail, ProcessInfo } from "../types/monitor";
 
@@ -34,11 +36,12 @@ interface Group {
 const diskRate = (p: ProcessInfo) =>
   p.disk_read_bytes_per_sec + p.disk_write_bytes_per_sec;
 
-/** Task Manager-style heat shading: cell tint scales with load. */
-function heat(frac: number): string | undefined {
+/** Task Manager-style heat shading: cell tint scales with load.
+ * Hue per column (design): CPU indigo, memory green, disk amber. */
+function heat(frac: number, hue: "series1" | "statusGood" | "series3"): string | undefined {
   const clamped = Math.min(1, Math.max(0, frac));
   if (clamped < 0.02) return undefined;
-  return withAlpha(themeColor("series4"), 0.06 + clamped * 0.34);
+  return withAlpha(themeColor(hue), 0.06 + clamped * 0.34);
 }
 
 function sortValue(g: Group, key: SortKey): number | string {
@@ -77,9 +80,11 @@ function ProcessesInner() {
   const [sortBy, setSortBy] = useState<SortKey>("cpu");
   const [sortDesc, setSortDesc] = useState(true);
   const [search, setSearch] = useState("");
+  const hostName = useSelectedHostName();
   const [grouped, setGrouped] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [confirmKill, setConfirmKill] = useState<ProcessInfo | null>(null);
+  const [selectedPid, setSelectedPid] = useState<number | null>(null);
   const [detail, setDetail] = useState<ProcessInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -213,118 +218,110 @@ function ProcessesInner() {
     {
       key: "cpu",
       text: formatPercent(cpu),
-      bg: heat(cpu / 100),
+      bg: heat(cpu / 100, "series1"),
     },
     {
       key: "mem",
       text: formatBytes(mem),
-      bg: heat(totalMemBytes > 0 ? mem / totalMemBytes : 0),
+      bg: heat(totalMemBytes > 0 ? mem / totalMemBytes : 0, "statusGood"),
     },
     {
       key: "disk",
       text: disk >= 10_240 ? formatBytesPerSec(disk) : "0 B/s",
-      bg: heat(disk / 50_000_000),
+      bg: heat(disk / 50_000_000, "series3"),
     },
   ];
 
-  const reniceCls =
-    "rounded-md border border-transparent px-1.5 py-0.5 text-ink-muted transition-colors duration-100 hover:border-border hover:bg-white/10 hover:text-ink-primary";
-  const actionButtons = (proc: ProcessInfo) => (
-    <div className="flex items-center justify-end gap-1">
-      {isLocal && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            doRenice(proc, 1);
-          }}
-          title="Lower priority (nice +1)"
-          className={reniceCls}
-        >
-          <Minus size={12} />
-        </button>
-      )}
-      {isLocal && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            doRenice(proc, -1);
-          }}
-          title="Raise priority (nice −1, needs root)"
-          className={reniceCls}
-        >
-          <Plus size={12} />
-        </button>
-      )}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setConfirmKill(proc);
-        }}
-        className="rounded-md border border-transparent px-2 py-0.5 text-xs text-status-critical transition-colors duration-100 hover:border-status-critical/30 hover:bg-status-critical/15"
-      >
-        End
-      </button>
-    </div>
-  );
+  const selectedProc =
+    selectedPid !== null ? processes.find((p) => p.pid === selectedPid) ?? null : null;
 
   const leafRow = (proc: ProcessInfo, indented: boolean) => (
     <tr
       key={proc.pid}
-      onClick={() => isLocal && setDetail(proc)}
-      className={`group border-t border-border text-ink-secondary hover:bg-white/5 ${
-        isLocal ? "cursor-pointer" : ""
+      onClick={() => {
+        setSelectedPid(proc.pid === selectedPid ? null : proc.pid);
+        if (isLocal) setDetail(proc);
+      }}
+      className={`cursor-pointer border-t border-border text-ink-secondary ${
+        proc.pid === selectedPid ? "bg-series-1/12" : "hover:bg-white/5"
       }`}
     >
       <td className="max-w-0 truncate px-3 py-1.5 text-ink-primary" title={proc.cmd}>
-        <span className={indented ? "pl-9" : "pl-5"}>
-          {proc.name}
-          <span className="pl-2 text-xs text-ink-muted">{proc.pid}</span>
-        </span>
+        <span className={indented ? "pl-9" : "pl-5"}>{proc.name}</span>
       </td>
-      <td className="px-3 py-1.5 text-xs">{proc.user}</td>
       {heatCells(proc.cpu_pct, proc.mem_bytes, diskRate(proc)).map((c) => (
-        <td
-          key={c.key}
-          className="px-3 py-1.5 text-right"
-          style={c.bg ? { backgroundColor: c.bg } : undefined}
-        >
-          {c.text}
+        <td key={c.key} className="px-3 py-1.5 text-right">
+          <span
+            className="inline-block min-w-14 rounded px-1.5 font-mono text-xs"
+            style={c.bg ? { backgroundColor: c.bg } : undefined}
+          >
+            {c.text}
+          </span>
         </td>
       ))}
-      <td className="px-3 py-1.5">{actionButtons(proc)}</td>
+      <td className="px-3 py-1.5 text-right font-mono text-xs text-ink-faint">{proc.pid}</td>
+      <td className="px-3 py-1.5 text-right font-mono text-xs text-ink-muted">{proc.user}</td>
     </tr>
   );
 
   return (
-    <div className="flex h-full flex-col p-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h1 className="text-lg font-semibold text-ink-primary">Processes</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setGrouped((g) => !g)}
-            title="Group processes with the same name"
-            aria-pressed={grouped}
-            className={`inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm transition-colors duration-100 ${
-              grouped
-                ? "bg-series-1/15 text-series-1"
-                : "text-ink-secondary hover:text-ink-primary"
-            }`}
+    <div className="flex h-full flex-col">
+      <ScreenHeader title="Processes" sub={`${hostName} · sorted by ${sortBy}`} />
+      <div className="flex min-h-0 flex-1 flex-col p-5">
+      <div className="mb-3.5 flex items-center gap-2">
+        <Input
+          icon={Search}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search processes…"
+          className="w-72"
+        />
+        <button
+          onClick={() => setGrouped((g) => !g)}
+          title="Group processes with the same name"
+          aria-pressed={grouped}
+          className={`inline-flex items-center gap-1.5 rounded-full border border-white/12 px-3 py-1.5 text-xs transition-colors duration-100 ${
+            grouped
+              ? "bg-series-1/15 text-series-1"
+              : "text-ink-secondary hover:text-ink-primary"
+          }`}
+        >
+          <Layers size={13} /> Group
+        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {isLocal && (
+            <>
+              <Button
+                size="sm"
+                disabled={!selectedProc}
+                onClick={() => selectedProc && doRenice(selectedProc, 1)}
+                title="Lower priority (nice +1)"
+              >
+                Renice −
+              </Button>
+              <Button
+                size="sm"
+                disabled={!selectedProc}
+                onClick={() => selectedProc && doRenice(selectedProc, -1)}
+                title="Raise priority (nice −1, needs root)"
+              >
+                Renice +
+              </Button>
+            </>
+          )}
+          <Button
+            size="sm"
+            variant="dangerSoft"
+            disabled={!selectedProc}
+            onClick={() => selectedProc && setConfirmKill(selectedProc)}
           >
-            <Layers size={13} /> Group
-          </button>
-          <Input
-            icon={Search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or command…"
-            className="w-64"
-          />
+            Kill{selectedProc ? " ●" : ""}
+          </Button>
         </div>
       </div>
-
       {error && <Banner>{error}</Banner>}
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-surface">
+      <div className="min-h-0 flex-1 overflow-y-auto glass rounded-2xl border border-border">
         {loading ? (
           <LoadingState label="Loading processes…" />
         ) : groups.length === 0 ? (
@@ -336,40 +333,37 @@ function ProcessesInner() {
           />
         ) : (
         <table className="w-full text-[13px]">
-          <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--color-border)]">
-            <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
+          <thead className="glass-overlay sticky top-0 z-10 shadow-[0_1px_0_var(--color-border)]">
+            <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
               <th
                 onClick={() => onHeaderClick("name")}
-                className="cursor-pointer select-none px-3 pb-2 pt-2 align-bottom font-medium hover:text-ink-primary"
+                className="cursor-pointer select-none px-3 py-2.5 align-bottom hover:text-ink-primary"
               >
-                Name{arrow("name")}
-              </th>
-              <th
-                onClick={() => onHeaderClick("user")}
-                className="w-24 cursor-pointer select-none px-3 pb-2 pt-2 align-bottom font-medium hover:text-ink-primary"
-              >
-                User{arrow("user")}
+                Process{arrow("name")}
               </th>
               {(
                 [
                   ["cpu", formatPercent(totals.cpu), "CPU", "w-24"],
-                  ["mem", formatPercent(totals.memPct), "Memory", "w-28"],
-                  ["disk", formatBytesPerSec(totals.disk), "Disk", "w-32"],
+                  ["mem", formatPercent(totals.memPct), "MEM", "w-28"],
+                  ["disk", formatBytesPerSec(totals.disk), "DISK", "w-32"],
                 ] as const
               ).map(([key, total, label, width]) => (
                 <th
                   key={key}
                   onClick={() => onHeaderClick(key)}
-                  className={`${width} cursor-pointer select-none border-l border-border px-3 pb-2 pt-2 text-right align-bottom font-medium hover:text-ink-primary`}
+                  className={`${width} cursor-pointer select-none px-3 py-2.5 text-right align-bottom hover:text-ink-primary`}
                 >
-                  <div className="text-sm font-semibold text-ink-secondary">
-                    {total}
-                  </div>
-                  {label}
+                  {label} <span className="normal-case text-ink-secondary">{total}</span>
                   {arrow(key)}
                 </th>
               ))}
-              <th className="w-24 px-3 pb-2 pt-2" />
+              <th className="w-20 px-3 py-2.5 text-right align-bottom">PID</th>
+              <th
+                onClick={() => onHeaderClick("user")}
+                className="w-24 cursor-pointer select-none px-3 py-2.5 text-right align-bottom hover:text-ink-primary"
+              >
+                User{arrow("user")}
+              </th>
             </tr>
           </thead>
           <tbody className="tabular-nums">
@@ -395,17 +389,20 @@ function ProcessesInner() {
                         </span>
                       </span>
                     </td>
-                    <td className="px-3 py-1.5 text-xs">{g.procs[0].user}</td>
                     {heatCells(g.cpu, g.mem, g.disk).map((c) => (
-                      <td
-                        key={c.key}
-                        className="px-3 py-1.5 text-right"
-                        style={c.bg ? { backgroundColor: c.bg } : undefined}
-                      >
-                        {c.text}
+                      <td key={c.key} className="px-3 py-1.5 text-right">
+                        <span
+                          className="inline-block min-w-14 rounded px-1.5 font-mono text-xs"
+                          style={c.bg ? { backgroundColor: c.bg } : undefined}
+                        >
+                          {c.text}
+                        </span>
                       </td>
                     ))}
                     <td className="px-3 py-1.5" />
+                    <td className="px-3 py-1.5 text-right font-mono text-xs text-ink-muted">
+                      {g.procs[0].user}
+                    </td>
                   </tr>
                   {isOpen && g.procs.map((p) => leafRow(p, true))}
                 </Fragment>
@@ -414,6 +411,9 @@ function ProcessesInner() {
           </tbody>
         </table>
         )}
+      </div>
+      <div className="mt-3 font-mono text-[11px] text-ink-faint">
+        {processes.length} processes · click a row for detail drawer · environ excluded by design
       </div>
 
       {detail && (
@@ -449,6 +449,7 @@ function ProcessesInner() {
             </div>
         </Modal>
       )}
+      </div>
     </div>
   );
 }

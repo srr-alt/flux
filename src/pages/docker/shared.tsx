@@ -15,7 +15,7 @@ export function RowButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1 rounded-md border border-transparent px-2 py-0.5 text-ink-muted transition-colors duration-100 hover:border-border hover:bg-white/10 hover:text-ink-primary disabled:opacity-40"
+      className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[.035] px-[11px] py-1 text-[10.5px] font-medium text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,.06)] transition-[background-color,color,transform] duration-100 hover:bg-white/10 hover:text-ink-primary active:scale-[.94] disabled:opacity-40"
     >
       {disabled && <RefreshCw size={10} className="animate-spin" />}
       {label}
@@ -36,7 +36,7 @@ export function DangerButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="rounded-md border border-transparent px-2 py-0.5 text-status-critical transition-colors duration-100 hover:border-status-critical/30 hover:bg-status-critical/15 disabled:opacity-40"
+      className="rounded-full border border-status-critical/[.28] bg-status-critical/[.06] px-[11px] py-1 text-[10.5px] font-medium text-status-critical transition-[background-color,transform] duration-100 hover:bg-status-critical/15 active:scale-[.94] disabled:opacity-40"
     >
       {label}
     </button>
@@ -50,7 +50,7 @@ export function ErrorBanner({ message }: { message: string }) {
 /** Scrollable bordered table container shared by every resource tab. */
 export function TableShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-surface">
+    <div className="min-h-0 flex-1 overflow-y-auto glass rounded-2xl border border-border">
       <table className="w-full text-sm">{children}</table>
     </div>
   );
@@ -58,7 +58,7 @@ export function TableShell({ children }: { children: ReactNode }) {
 
 export function HeadRow({ children }: { children: ReactNode }) {
   return (
-    <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--color-border)]">
+    <thead className="glass-overlay sticky top-0 z-10 shadow-[0_1px_0_var(--color-border)]">
       <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
         {children}
       </tr>

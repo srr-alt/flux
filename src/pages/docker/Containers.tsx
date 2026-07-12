@@ -1,11 +1,22 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Container, Copy, Search } from "lucide-react";
+import {
+  Check,
+  Container,
+  Copy,
+  FileText,
+  Pause,
+  Play,
+  RotateCw,
+  Search,
+  Square,
+  SquareTerminal,
+  X,
+} from "lucide-react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { containerAction, containerLogs, listContainers } from "../../lib/tauri";
 import { Sparkline } from "../../components/charts/Sparkline";
 import { chartColors } from "../../lib/theme";
 import { useDockerStore } from "../../state/dockerStore";
-import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Drawer } from "../../components/ui/Drawer";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -15,9 +26,46 @@ import { Modal } from "../../components/ui/Modal";
 import type { ContainerInfo, ContainerStats } from "../../types/monitor";
 import { InspectDrawer } from "./InspectDrawer";
 import { ShellPanel } from "./ShellPanel";
-import { DangerButton, ErrorBanner, HeadRow, RowButton, statePill, TableShell } from "./shared";
+import { ErrorBanner, HeadRow, TableShell } from "./shared";
 
 const TAIL_OPTIONS = [100, 300, 1000, 5000] as const;
+
+const STATE_COLOR: Record<string, string> = {
+  running: "text-status-good",
+  paused: "text-status-warning",
+  restarting: "text-status-warning",
+};
+
+/** 24px icon action (design: containers row actions are compact glyphs). */
+function IconBtn({
+  icon: Icon,
+  title,
+  onClick,
+  disabled,
+  danger,
+}: {
+  icon: typeof Play;
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors duration-100 disabled:opacity-40 ${
+        danger
+          ? "text-status-critical hover:bg-status-critical/15"
+          : "text-ink-muted hover:bg-white/10 hover:text-ink-primary"
+      }`}
+    >
+      <Icon size={12} />
+    </button>
+  );
+}
 
 export function Containers({ refreshToken }: { refreshToken: number }) {
   const [containers, setContainers] = useState<ContainerInfo[] | null>(null);
@@ -161,76 +209,78 @@ export function Containers({ refreshToken }: { refreshToken: number }) {
         <TableShell>
           <HeadRow>
             <th className="px-3 py-2 font-medium">Container</th>
-            <th className="px-3 py-2 font-medium">Image</th>
-            <th className="w-24 px-3 py-2 font-medium">State</th>
-            <th className="w-32 px-3 py-2 text-right font-medium">CPU</th>
-            <th className="w-36 px-3 py-2 text-right font-medium">Memory</th>
+            <th className="w-28 px-3 py-2 font-medium">CPU</th>
+            <th className="w-16 px-3 py-2 text-right font-medium">%</th>
+            <th className="w-24 px-3 py-2 text-right font-medium">Memory</th>
             <th className="px-3 py-2 font-medium">Ports</th>
-            <th className="w-72 px-3 py-2 font-medium"></th>
+            <th className="w-36 px-3 py-2 text-right font-medium">Actions</th>
           </HeadRow>
           <tbody className="tabular-nums">
             {visible.map((c) => {
-              const pill = statePill(c.state);
               const s = stats[c.id];
               const isBusy = busy === c.id;
+              const stateCls = STATE_COLOR[c.state] ?? "text-ink-muted";
               return (
                 <tr
                   key={c.id}
                   onClick={() => setInspecting(c)}
                   className="cursor-pointer border-t border-border text-ink-secondary hover:bg-white/5"
                 >
-                  <td className="px-3 py-1.5 font-medium text-ink-primary">
-                    {c.name}
-                    <div className="text-[11px] font-normal text-ink-muted" title={c.status}>
-                      {c.status}
+                  <td className="max-w-0 px-3 py-2" title={c.status}>
+                    <div className="flex items-center gap-2.5">
+                      <span className={`shrink-0 font-mono text-[10px] font-medium ${stateCls}`}>
+                        {c.state}
+                      </span>
+                      <span className="shrink-0 text-xs font-medium text-ink-primary">
+                        {c.name}
+                      </span>
+                      <span className="truncate font-mono text-[10px] text-ink-faint">
+                        {c.image}
+                      </span>
                     </div>
                   </td>
-                  <td className="max-w-0 truncate px-3 py-1.5" title={c.image}>
-                    {c.image}
+                  <td className="px-3 py-2">
+                    <CpuSparkCell values={cpuHistory[c.id]} timestamps={statsTimestamps} />
                   </td>
-                  <td className="px-3 py-1.5">
-                    <Badge className={pill.cls} pulse={pill.pulse}>
-                      {c.state}
-                    </Badge>
+                  <td className="px-3 py-2 text-right font-mono text-xs font-semibold text-ink-secondary">
+                    {s ? `${s.cpu_pct.toFixed(0)}%` : "—"}
                   </td>
-                  <td className="px-3 py-1.5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <CpuSparkCell
-                        values={cpuHistory[c.id]}
-                        timestamps={statsTimestamps}
-                      />
-                      <span className="w-12">{s ? `${s.cpu_pct.toFixed(1)}%` : "—"}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-1.5 text-right" title={s?.mem_usage}>
+                  <td
+                    className="px-3 py-2 text-right font-mono text-xs text-ink-muted"
+                    title={s?.mem_usage}
+                  >
                     {s ? s.mem_usage.split(" / ")[0] : "—"}
                   </td>
-                  <td className="max-w-0 truncate px-3 py-1.5 text-xs" title={c.ports}>
+                  <td
+                    className="max-w-0 truncate px-3 py-2 font-mono text-[10px] text-ink-faint"
+                    title={c.ports}
+                  >
                     {c.ports || "—"}
                   </td>
-                  <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex justify-end gap-1 text-xs">
+                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-end gap-1">
                       {c.state === "running" && (
                         <>
-                          <RowButton label="Shell" disabled={isBusy} onClick={() => setShellFor(c)} />
-                          <RowButton label="Stop" disabled={isBusy} onClick={() => act(c, "stop")} />
-                          <RowButton label="Restart" disabled={isBusy} onClick={() => act(c, "restart")} />
-                          <RowButton label="Pause" disabled={isBusy} onClick={() => act(c, "pause")} />
+                          <IconBtn icon={Pause} title="Pause" disabled={isBusy} onClick={() => act(c, "pause")} />
+                          <IconBtn icon={RotateCw} title="Restart" disabled={isBusy} onClick={() => act(c, "restart")} />
+                          <IconBtn icon={FileText} title="Logs" onClick={() => setLogsFor(c)} />
+                          <IconBtn icon={SquareTerminal} title="Shell" disabled={isBusy} onClick={() => setShellFor(c)} />
+                          <IconBtn icon={Square} title="Stop" danger disabled={isBusy} onClick={() => act(c, "stop")} />
                         </>
                       )}
                       {c.state === "paused" && (
-                        <RowButton label="Unpause" disabled={isBusy} onClick={() => act(c, "unpause")} />
+                        <>
+                          <IconBtn icon={Play} title="Unpause" disabled={isBusy} onClick={() => act(c, "unpause")} />
+                          <IconBtn icon={FileText} title="Logs" onClick={() => setLogsFor(c)} />
+                          <IconBtn icon={Square} title="Stop" danger disabled={isBusy} onClick={() => act(c, "stop")} />
+                        </>
                       )}
                       {c.state !== "running" && c.state !== "paused" && (
-                        <RowButton label="Start" disabled={isBusy} onClick={() => act(c, "start")} />
-                      )}
-                      <RowButton label="Logs" disabled={false} onClick={() => setLogsFor(c)} />
-                      {c.state !== "running" && c.state !== "paused" && (
-                        <DangerButton
-                          label="Remove"
-                          disabled={isBusy}
-                          onClick={() => setConfirmRemove(c)}
-                        />
+                        <>
+                          <IconBtn icon={Play} title="Start" disabled={isBusy} onClick={() => act(c, "start")} />
+                          <IconBtn icon={FileText} title="Logs" onClick={() => setLogsFor(c)} />
+                          <IconBtn icon={X} title="Remove" danger disabled={isBusy} onClick={() => setConfirmRemove(c)} />
+                        </>
                       )}
                     </div>
                   </td>
@@ -239,6 +289,11 @@ export function Containers({ refreshToken }: { refreshToken: number }) {
             })}
           </tbody>
         </TableShell>
+      )}
+      {containers.length > 0 && (
+        <div className="mt-3 font-mono text-[11px] text-ink-faint/80">
+          stats poll 5s · logs / inspect / shell (docker exec -it, xterm.js) open as slide-overs
+        </div>
       )}
 
       {inspecting && (

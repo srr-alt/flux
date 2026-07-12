@@ -86,7 +86,7 @@ export function Cleaner() {
         {categories.map((cat) => (
           <label
             key={cat.id}
-            className="flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 hover:bg-white/5"
+            className="flex cursor-pointer items-center gap-4 glass rounded-2xl border border-border px-4 py-3 hover:bg-white/5"
           >
             <input
               type="checkbox"

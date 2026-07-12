@@ -12,6 +12,8 @@ import {
 import { getCpuDetails, getGpuProcesses } from "../lib/tauri";
 import { chartColors, themeColor } from "../lib/theme";
 import { LoadingState } from "../components/ui/LoadingState";
+import { ScreenHeader } from "../components/layout/ScreenHeader";
+import { useSelectedHostName } from "../hooks/useSelectedHostName";
 import { HostGate } from "../components/hosts/HostGate";
 import { useMonitorStore } from "../state/monitorStore";
 import {
@@ -44,6 +46,7 @@ export function Performance() {
 
 function PerformanceInner() {
   const [selected, setSelected] = useState<Selection>("cpu");
+  const hostName = useSelectedHostName();
   const {
     latest,
     timestamps,
@@ -73,13 +76,14 @@ function PerformanceInner() {
       </div>
     );
   }
-
   const mem = latest.memory;
   const memUsedPct = ((mem.total_kb - mem.available_kb) / mem.total_kb) * 100;
   const diskDevices = Object.keys(diskRead).sort();
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col">
+      <ScreenHeader title="Performance" sub={hostName} />
+      <div className="flex min-h-0 flex-1">
       {/* Rail */}
       <div className="w-64 shrink-0 space-y-1.5 overflow-y-auto border-r border-border p-3">
         <RailItem
@@ -170,6 +174,7 @@ function PerformanceInner() {
           <GpuDetail index={Number(selected.slice(4))} />
         )}
       </div>
+      </div>
     </div>
   );
 }
@@ -194,13 +199,19 @@ function RailItem({ active, onClick, title, value, timestamps, series, yMax }: R
       onClick={onClick}
       className={`w-full rounded-lg border p-3 text-left transition-colors duration-100 ${
         active
-          ? "border-series-1/40 bg-series-1/10"
+          ? "border-white/10 bg-white/5"
           : "border-transparent hover:border-border hover:bg-white/[0.04]"
       }`}
     >
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="truncate text-[13px] font-medium text-ink-primary">{title}</span>
-        <span className="shrink-0 text-xs tabular-nums text-ink-secondary">{value}</span>
+        <span
+          className={`truncate text-xs font-semibold ${active ? "text-series-1" : "text-ink-muted"}`}
+        >
+          {title}
+        </span>
+        <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums text-ink-muted">
+          {value}
+        </span>
       </div>
       <Sparkline
         timestamps={timestamps.slice(-(series[0].values.length || 1))}
@@ -251,7 +262,7 @@ function CpuDetail() {
   return (
     <div>
       <DetailHeader title="CPU" subtitle={systemInfo?.cpu_model} />
-      <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="glass rounded-2xl border border-border p-4">
         <AreaChart
           timestamps={timestamps}
           series={[{ values: cpuHistory, color: COLORS.cpu, label: "Utilization" }]}
@@ -284,7 +295,7 @@ function CpuDetail() {
           }
         />
       </div>
-      <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+      <div className="mt-4 glass rounded-2xl border border-border p-4">
         <h2 className="mb-3 text-sm font-medium text-ink-primary">
           Cores ({cpu.per_core_usage_pct.length})
         </h2>
@@ -309,7 +320,7 @@ function CpuDetail() {
         </div>
       </div>
       {details && (
-        <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+        <div className="mt-4 glass rounded-2xl border border-border p-4">
           <h2 className="mb-3 text-sm font-medium text-ink-primary">Details</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
             {(
@@ -334,8 +345,8 @@ function CpuDetail() {
               .filter(([, v]) => v)
               .map(([label, value]) => (
                 <div key={label} className="contents">
-                  <dt className="text-ink-muted">{label}</dt>
-                  <dd className="tabular-nums text-ink-secondary">{value}</dd>
+                  <dt className="text-xs text-ink-muted">{label}</dt>
+                  <dd className="font-mono text-xs tabular-nums text-ink-secondary">{value}</dd>
                 </div>
               ))}
           </dl>
@@ -361,7 +372,7 @@ function MemoryDetail() {
   return (
     <div>
       <DetailHeader title="Memory" subtitle={`${formatKb(mem.total_kb)} total`} />
-      <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="glass rounded-2xl border border-border p-4">
         <AreaChart
           timestamps={timestamps}
           series={[{ values: memUsedPctHistory, color: COLORS.memory, label: "Used" }]}
@@ -369,7 +380,7 @@ function MemoryDetail() {
           formatValue={(v) => `${v}%`}
         />
       </div>
-      <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+      <div className="mt-4 glass rounded-2xl border border-border p-4">
         <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full">
           {segments.map((seg) => (
             <div
@@ -420,7 +431,7 @@ function MemoryDetail() {
         />
       </div>
       {mem.swap_devices.length > 0 && (
-        <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+        <div className="mt-4 glass rounded-2xl border border-border p-4">
           <h2 className="mb-3 text-sm font-medium text-ink-primary">Swap devices</h2>
           <div className="space-y-3">
             {mem.swap_devices.map((sw) => (
@@ -448,7 +459,7 @@ function DiskDetail({ device }: { device: string }) {
   return (
     <div>
       <DetailHeader title={`Disk — ${device}`} />
-      <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="glass rounded-2xl border border-border p-4">
         <AreaChart
           timestamps={diskTimestamps}
           series={[
@@ -474,7 +485,7 @@ function DiskDetail({ device }: { device: string }) {
         <Stat label="Busy" value={io ? formatPercent(io.util_pct) : "—"} />
       </div>
       {io && (
-        <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+        <div className="mt-4 glass rounded-2xl border border-border p-4">
           <h2 className="mb-3 text-sm font-medium text-ink-primary">Details</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
             {(
@@ -486,15 +497,15 @@ function DiskDetail({ device }: { device: string }) {
               ] as const
             ).map(([label, value]) => (
               <div key={label} className="contents">
-                <dt className="text-ink-muted">{label}</dt>
-                <dd className="tabular-nums text-ink-secondary">{value}</dd>
+                <dt className="text-xs text-ink-muted">{label}</dt>
+                <dd className="font-mono text-xs tabular-nums text-ink-secondary">{value}</dd>
               </div>
             ))}
           </dl>
         </div>
       )}
       {mounts.length > 0 && (
-        <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+        <div className="mt-4 glass rounded-2xl border border-border p-4">
           <h2 className="mb-3 text-sm font-medium text-ink-primary">Filesystems</h2>
           <div className="space-y-3">
             {mounts.map((m) => (
@@ -520,7 +531,7 @@ function NetDetail({ iface }: { iface: string }) {
   return (
     <div>
       <DetailHeader title={`Network — ${iface}`} />
-      <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="glass rounded-2xl border border-border p-4">
         <AreaChart
           timestamps={timestamps}
           series={[
@@ -574,7 +585,7 @@ function NetDetail({ iface }: { iface: string }) {
         <Stat label="State" value={current?.operstate ?? "—"} />
       </div>
       {current && (
-        <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+        <div className="mt-4 glass rounded-2xl border border-border p-4">
           <h2 className="mb-3 text-sm font-medium text-ink-primary">Details</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
             {(
@@ -586,8 +597,8 @@ function NetDetail({ iface }: { iface: string }) {
               ] as const
             ).map(([label, value]) => (
               <div key={label} className="contents">
-                <dt className="text-ink-muted">{label}</dt>
-                <dd className="break-all tabular-nums text-ink-secondary">{value}</dd>
+                <dt className="text-xs text-ink-muted">{label}</dt>
+                <dd className="break-all font-mono text-xs tabular-nums text-ink-secondary">{value}</dd>
               </div>
             ))}
           </dl>
@@ -611,7 +622,7 @@ function GpuDetail({ index }: { index: number }) {
   return (
     <div>
       <DetailHeader title="GPU" subtitle={`${gpu.name} · ${gpu.driver}`} />
-      <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="glass rounded-2xl border border-border p-4">
         <AreaChart
           timestamps={gpuTimestamps}
           series={[
@@ -680,7 +691,7 @@ function GpuDetail({ index }: { index: number }) {
           }
         />
       </div>
-      <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+      <div className="mt-4 glass rounded-2xl border border-border p-4">
         <h2 className="mb-3 text-sm font-medium text-ink-primary">Details</h2>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
           {(
@@ -694,8 +705,8 @@ function GpuDetail({ index }: { index: number }) {
             ] as const
           ).map(([label, value]) => (
             <div key={label} className="contents">
-              <dt className="text-ink-muted">{label}</dt>
-              <dd className="tabular-nums text-ink-secondary">{value}</dd>
+              <dt className="text-xs text-ink-muted">{label}</dt>
+              <dd className="font-mono text-xs tabular-nums text-ink-secondary">{value}</dd>
             </div>
           ))}
         </dl>
@@ -734,7 +745,7 @@ function GpuProcesses({ gpu }: { gpu: GpuSnapshot }) {
     : procs;
 
   return (
-    <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+    <div className="mt-4 glass rounded-2xl border border-border p-4">
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="text-sm font-medium text-ink-primary">Processes</h2>
         <span className="text-[11px] text-ink-muted">

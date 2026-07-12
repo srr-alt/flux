@@ -77,7 +77,7 @@ export function Drawer({ onClose, title, children, wide }: DrawerProps) {
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
-        className={`absolute inset-y-0 right-0 flex max-w-full animate-drawer-in flex-col border-l border-border bg-surface shadow-xl shadow-black/40 outline-none ${
+        className={`glass-overlay absolute inset-y-0 right-0 flex max-w-full animate-drawer-in flex-col border-l border-white/10 shadow-[-16px_0_48px_rgba(0,0,0,.5),inset_1px_0_0_rgba(255,255,255,.04)] outline-none ${
           wide ? "w-[720px]" : "w-[440px]"
         }`}
       >

@@ -13,17 +13,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  primary: "bg-series-1 font-medium text-white hover:bg-series-1/85",
+  primary: "bg-series-1 font-medium text-white hover:bg-[#6a76e0]",
   soft: "bg-series-1/15 font-medium text-series-1 hover:bg-series-1/25",
-  secondary: "border border-border text-ink-secondary hover:bg-white/10 hover:text-ink-primary",
+  secondary:
+    "glass border border-white/12 text-ink-secondary hover:bg-white/10 hover:text-ink-primary",
   ghost: "text-ink-secondary hover:bg-white/10 hover:text-ink-primary",
   danger: "bg-status-critical font-medium text-white hover:bg-status-critical/85",
-  dangerSoft: "text-status-critical hover:bg-status-critical/15",
+  dangerSoft:
+    "border border-status-critical/30 bg-status-critical/5 text-status-critical hover:bg-status-critical/15",
 };
 
 const SIZES: Record<NonNullable<ButtonProps["size"]>, string> = {
-  sm: "px-2.5 py-1 text-xs",
-  md: "px-3 py-1.5 text-sm",
+  sm: "px-3 py-1 text-xs",
+  md: "px-4 py-1.5 text-sm",
 };
 
 export function Button({
@@ -38,7 +40,7 @@ export function Button({
   return (
     <button
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-md transition-colors duration-100 disabled:pointer-events-none disabled:opacity-40 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-full transition-[background-color,color,border-color,transform] duration-100 active:scale-[.96] disabled:pointer-events-none disabled:opacity-40 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...rest}
     >
       {loading && <RefreshCw size={size === "sm" ? 11 : 13} className="animate-spin" />}

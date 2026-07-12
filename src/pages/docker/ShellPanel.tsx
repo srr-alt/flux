@@ -123,7 +123,7 @@ export function ShellPanel({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="absolute inset-y-0 right-0 flex w-[720px] max-w-full animate-drawer-in flex-col border-l border-border bg-surface shadow-xl shadow-black/40">
+      <div className="absolute inset-y-0 right-0 flex w-[720px] max-w-full animate-drawer-in glass-overlay flex-col border-l border-white/10 shadow-[-16px_0_48px_rgba(0,0,0,.5)]">
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div className="min-w-0">
             <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-ink-primary">

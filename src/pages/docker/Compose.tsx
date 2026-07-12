@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { Check, Copy, FileClock, FilePlus, Layers } from "lucide-react";
+import { Check, Copy, Layers } from "lucide-react";
 import {
   composeAction,
   composeFileForget,
@@ -10,23 +10,29 @@ import {
   composeUpFile,
   listComposeProjects,
 } from "../../lib/tauri";
-import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Drawer } from "../../components/ui/Drawer";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingState } from "../../components/ui/LoadingState";
+import { Switch } from "../../components/ui/Switch";
 import type { ComposeProject } from "../../types/monitor";
-import { ErrorBanner, HeadRow, RowButton, TableShell } from "./shared";
+import { DangerButton, ErrorBanner, RowButton } from "./shared";
 
 const TAIL_OPTIONS = [100, 300, 1000, 5000] as const;
 
-/** compose ls status like "running(2)" or "running(1), exited(1)". */
+/** compose ls status like "running(2)" or "running(1), exited(1)" — design
+ * pill is bare colored text, no fill. */
 function statusCls(status: string): string {
   const running = status.includes("running");
   const other = /exited|paused|dead|created/.test(status);
-  if (running && !other) return "bg-status-good/15 text-status-good";
-  if (running && other) return "bg-status-warning/15 text-status-warning";
-  return "bg-white/5 text-ink-muted";
+  if (running && !other) return "text-status-good";
+  if (running && other) return "text-status-warning";
+  return "text-ink-muted";
+}
+
+/** ~-shorten home paths the way the design writes compose files. */
+function tildify(path: string): string {
+  return path.replace(/^\/home\/[^/]+/, "~");
 }
 
 export function Compose({
@@ -172,27 +178,6 @@ export function Compose({
     return <LoadingState label="Listing compose projects…" className="h-full" />;
   }
 
-  const toolbarRight = (
-    <div className="flex items-center gap-3">
-      <label
-        className="flex cursor-pointer items-center gap-1.5 text-xs text-ink-muted"
-        title="Run docker compose up with --build (rebuilds images from their Dockerfiles)"
-      >
-        <input
-          type="checkbox"
-          checked={buildOnUp}
-          onChange={(e) => setBuildOnUp(e.target.checked)}
-          className="accent-series-1"
-        />
-        Build on up
-      </label>
-      <Button variant="primary" onClick={addProject} loading={adding}>
-        {!adding && <FilePlus size={13} />}
-        {adding ? (buildOnUp ? "Building…" : "Starting…") : "Add compose file"}
-      </Button>
-    </div>
-  );
-
   // Remembered files whose project isn't in `compose ls` anymore (downed or
   // never started this boot) get a synthetic row so they can be brought up.
   const liveConfigs = new Set(projects.flatMap((p) => p.config_files));
@@ -209,7 +194,9 @@ export function Compose({
                 projects.length + savedOnly.length === 1 ? "" : "s"
               } · ${runningCount} running`}
         </span>
-        {toolbarRight}
+        <Button size="sm" onClick={addProject} loading={adding}>
+          {adding ? (buildOnUp ? "Building…" : "Starting…") : "Add compose file"}
+        </Button>
       </div>
 
       {error && <ErrorBanner message={error} />}
@@ -221,71 +208,78 @@ export function Compose({
           hint="Projects started with docker compose up show here — including stopped ones. Add a compose file to start one."
         />
       ) : (
-        <TableShell>
-          <HeadRow>
-            <th className="px-3 py-2 font-medium">Project</th>
-            <th className="w-32 px-3 py-2 font-medium">Status</th>
-            <th className="px-3 py-2 font-medium">Config</th>
-            <th className="w-64 px-3 py-2 font-medium"></th>
-          </HeadRow>
-          <tbody>
-            {projects.map((p) => {
-              const isBusy = busy === p.name;
-              return (
-                <tr key={p.name} className="border-t border-border text-ink-secondary hover:bg-white/5">
-                  <td className="px-3 py-1.5 font-medium text-ink-primary">{p.name}</td>
-                  <td className="px-3 py-1.5">
-                    <Badge className={statusCls(p.status)}>{p.status}</Badge>
-                  </td>
-                  <td
-                    className="max-w-0 truncate px-3 py-1.5 font-mono text-xs"
+        <div className="glass min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border">
+          {/* card header: title + build-on-up switch (design) */}
+          <div className="glass-overlay sticky top-0 z-10 flex items-center border-b border-border px-3.5 py-[9px]">
+            <span className="text-[11px] font-semibold text-ink-secondary">
+              Compose projects
+            </span>
+            <label
+              className="ml-auto flex cursor-pointer items-center gap-2 text-[11px] text-ink-muted"
+              title="Run docker compose up with --build (rebuilds images from their Dockerfiles)"
+            >
+              <Switch
+                checked={buildOnUp}
+                onChange={() => setBuildOnUp((v) => !v)}
+                aria-label="Build on up"
+              />
+              Build on up
+            </label>
+          </div>
+
+          {projects.map((p) => {
+            const isBusy = busy === p.name;
+            const files = p.config_files.map(tildify).join(", ");
+            return (
+              <div
+                key={p.name}
+                className="grid grid-cols-[minmax(0,1fr)_90px_auto] items-center gap-2.5 border-b border-white/[.04] px-3.5 py-[11px]"
+              >
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-ink-primary">{p.name}</div>
+                  <div
+                    className="truncate font-mono text-[10px] text-ink-faint"
                     title={p.config_files.join("\n")}
                   >
-                    {p.config_files.join(", ")}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <div className="flex justify-end gap-1 text-xs">
-                      <RowButton label="Up" disabled={isBusy} onClick={() => act(p, "up")} />
-                      <RowButton label="Restart" disabled={isBusy} onClick={() => act(p, "restart")} />
-                      <RowButton label="Stop" disabled={isBusy} onClick={() => act(p, "stop")} />
-                      <RowButton label="Down" disabled={isBusy} onClick={() => act(p, "down")} />
-                      <RowButton label="Logs" disabled={false} onClick={() => setLogsFor(p.name)} />
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {savedOnly.map((file) => {
-              const isBusy = busy === file;
-              const dirName = file.split("/").slice(-2, -1)[0] ?? file;
-              return (
-                <tr key={file} className="border-t border-border text-ink-secondary hover:bg-white/5">
-                  <td className="px-3 py-1.5">
-                    <span className="inline-flex items-center gap-1.5 font-medium text-ink-secondary">
-                      <FileClock size={12} className="text-ink-muted" />
-                      {dirName}
-                    </span>
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <Badge outline>saved</Badge>
-                  </td>
-                  <td
-                    className="max-w-0 truncate px-3 py-1.5 font-mono text-xs text-ink-muted"
-                    title={file}
-                  >
-                    {file}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <div className="flex justify-end gap-1 text-xs">
-                      <RowButton label="Up" disabled={isBusy} onClick={() => upFromFile(file)} />
-                      <RowButton label="Forget" disabled={isBusy} onClick={() => forgetFile(file)} />
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </TableShell>
+                    {files}
+                  </div>
+                </div>
+                <span className={`text-[10px] font-medium ${statusCls(p.status)}`}>
+                  {p.status}
+                </span>
+                <div className="flex justify-end gap-1.5">
+                  <RowButton label="Up" disabled={isBusy} onClick={() => act(p, "up")} />
+                  <RowButton label="Restart" disabled={isBusy} onClick={() => act(p, "restart")} />
+                  <RowButton label="Logs" disabled={false} onClick={() => setLogsFor(p.name)} />
+                  <DangerButton label="Down" disabled={isBusy} onClick={() => act(p, "down")} />
+                </div>
+              </div>
+            );
+          })}
+
+          {savedOnly.map((file) => {
+            const isBusy = busy === file;
+            const dirName = file.split("/").slice(-2, -1)[0] ?? file;
+            return (
+              <div
+                key={file}
+                className="grid grid-cols-[minmax(0,1fr)_90px_auto] items-center gap-2.5 border-b border-white/[.04] px-3.5 py-[11px]"
+              >
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-ink-primary">{dirName}</div>
+                  <div className="truncate font-mono text-[10px] text-ink-faint" title={file}>
+                    {tildify(file)} · saved
+                  </div>
+                </div>
+                <span className="text-[10px] font-medium text-ink-muted">saved</span>
+                <div className="flex justify-end gap-1.5">
+                  <RowButton label="Up" disabled={isBusy} onClick={() => upFromFile(file)} />
+                  <RowButton label="Forget" disabled={isBusy} onClick={() => forgetFile(file)} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {logsFor && (

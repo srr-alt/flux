@@ -74,7 +74,7 @@ export function Uninstaller() {
       {message && <Banner tone="good">{message}</Banner>}
       {error && <Banner>{error}</Banner>}
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-surface">
+      <div className="min-h-0 flex-1 overflow-y-auto glass rounded-2xl border border-border">
         {loading ? (
           <LoadingState label="Loading packages…" />
         ) : filtered.length === 0 ? (
@@ -86,7 +86,7 @@ export function Uninstaller() {
           />
         ) : (
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--color-border)]">
+            <thead className="glass-overlay sticky top-0 z-10 shadow-[0_1px_0_var(--color-border)]">
               <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
                 <th className="px-3 py-2 font-medium">Package</th>
                 <th className="px-3 py-2 font-medium">Summary</th>
