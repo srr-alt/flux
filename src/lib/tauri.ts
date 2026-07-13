@@ -11,6 +11,7 @@ import type {
   DiskUsageRow,
   GpuProcess,
   GpuSnapshot,
+  HistoryPoint,
   HwmonChip,
   ImageInfo,
   InfoSection,
@@ -52,6 +53,14 @@ export function getCpuDetails(): Promise<CpuDetails> {
 
 export function getGpuProcesses(): Promise<GpuProcess[]> {
   return invoke("get_gpu_processes");
+}
+
+/** Persisted history for a host; hostId "local" is this machine. */
+export function historyQuery(
+  hostId: string,
+  rangeSecs: number,
+): Promise<HistoryPoint[]> {
+  return invoke("history_query", { hostId, rangeSecs });
 }
 
 export function onTick(

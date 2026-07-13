@@ -25,3 +25,22 @@ pub fn get_cpu_details() -> monitor::cpu::CpuDetails {
 pub fn get_gpu_processes() -> Vec<monitor::gpu::GpuProcess> {
     monitor::gpu::processes()
 }
+
+/// Read persisted history for one host. `host_id` is "local" for this
+/// machine. Runs on the blocking pool — SQLite reads are file I/O.
+#[tauri::command]
+pub async fn history_query(
+    state: State<'_, crate::history::HistoryState>,
+    host_id: String,
+    range_secs: u64,
+) -> Result<Vec<crate::history::HistoryPoint>, String> {
+    let Some(handle) = &state.0 else {
+        return Ok(Vec::new()); // history disabled: empty, not an error
+    };
+    let db_path = handle.db_path.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::history::query(&db_path, &host_id, range_secs)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

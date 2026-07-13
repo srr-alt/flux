@@ -2,6 +2,7 @@ mod api_server;
 pub mod commands_hosts;
 mod commands_modules;
 mod commands_monitor;
+pub mod history;
 mod commands_process;
 mod commands_settings;
 mod modules;
@@ -68,6 +69,7 @@ pub fn run() {
             commands_monitor::get_initial_snapshot,
             commands_monitor::get_cpu_details,
             commands_monitor::get_gpu_processes,
+            commands_monitor::history_query,
             commands_process::list_processes,
             commands_process::kill_process,
             commands_process::renice_process,
@@ -127,6 +129,10 @@ pub fn run() {
             commands_hosts::forget_host_key,
         ])
         .setup(|app| {
+            // History recorder: best-effort, app runs fine without it.
+            let data_dir = app.path().app_data_dir().expect("app data dir");
+            let _ = std::fs::create_dir_all(&data_dir);
+            app.manage(history::HistoryState(history::spawn(&data_dir)));
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(monitor_loop(handle));
             commands_hosts::autoconnect_saved_hosts(app.handle());
@@ -174,6 +180,9 @@ async fn monitor_loop(app: tauri::AppHandle) {
         let snapshot = collect_tick(&state, elapsed);
         *state.last_snapshot.lock().unwrap() = Some(snapshot.clone());
         write_log_row(&state, &snapshot);
+        if let Some(history) = &app.state::<history::HistoryState>().0 {
+            history.record(history::Sample::from_tick("local", &snapshot));
+        }
         if !minimized {
             let _ = app.emit(EVENT_TICK, &snapshot);
         }

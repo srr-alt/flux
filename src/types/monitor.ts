@@ -351,3 +351,15 @@ export interface SystemInfo {
   total_memory_kb: number;
   uptime_secs: number;
 }
+
+/** One persisted history sample (backend history.rs HistoryPoint). */
+export interface HistoryPoint {
+  ts: number;
+  cpu_pct: number;
+  cpu_max_pct: number;
+  mem_used_kb: number;
+  mem_total_kb: number;
+  net_rx_bps: number;
+  net_tx_bps: number;
+  temp_c: number | null;
+}

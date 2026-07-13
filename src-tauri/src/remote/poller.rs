@@ -1,7 +1,7 @@
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::Duration;
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use flux_core::process::{ProcessInfo, ProcessQuery};
 
@@ -85,6 +85,9 @@ pub fn run(
             match agentless::poll(&session, &mut deltas) {
                 Ok(Some((tick, disks))) => {
                     consecutive_failures = 0;
+                    if let Some(history) = &app.state::<crate::history::HistoryState>().0 {
+                        history.record(crate::history::Sample::from_tick(&host_id, &tick));
+                    }
                     let _ = app.emit(
                         EVENT_REMOTE_TICK,
                         RemoteEvent {

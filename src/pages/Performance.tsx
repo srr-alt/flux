@@ -20,6 +20,11 @@ import {
   useSelectedHostMetrics,
   useSelectedSystemInfo,
 } from "../hooks/useHostMetrics";
+import {
+  HISTORY_RANGES,
+  useHistory,
+  type HistoryRange,
+} from "../hooks/useHistory";
 import type {
   CpuDetails as CpuDetailsType,
   GpuProcess,
@@ -46,6 +51,7 @@ export function Performance() {
 
 function PerformanceInner() {
   const [selected, setSelected] = useState<Selection>("cpu");
+  const [range, setRange] = useState<HistoryRange>(null);
   const hostName = useSelectedHostName();
   const {
     latest,
@@ -164,12 +170,21 @@ function PerformanceInner() {
 
       {/* Detail */}
       <div className="min-w-0 flex-1 overflow-y-auto p-6">
-        {selected === "cpu" && <CpuDetail />}
-        {selected === "memory" && <MemoryDetail />}
+        {(selected === "cpu" ||
+          selected === "memory" ||
+          selected.startsWith("net:")) && (
+          <div className="mb-3 flex justify-end">
+            <RangePicker range={range} onChange={setRange} />
+          </div>
+        )}
+        {selected === "cpu" && <CpuDetail range={range} />}
+        {selected === "memory" && <MemoryDetail range={range} />}
         {selected.startsWith("disk:") && (
           <DiskDetail device={selected.slice(5)} />
         )}
-        {selected.startsWith("net:") && <NetDetail iface={selected.slice(4)} />}
+        {selected.startsWith("net:") && (
+          <NetDetail iface={selected.slice(4)} range={range} />
+        )}
         {isLocal && selected.startsWith("gpu:") && (
           <GpuDetail index={Number(selected.slice(4))} />
         )}
@@ -223,6 +238,42 @@ function RailItem({ active, onClick, title, value, timestamps, series, yMax }: R
   );
 }
 
+function RangePicker({
+  range,
+  onChange,
+}: {
+  range: HistoryRange;
+  onChange: (range: HistoryRange) => void;
+}) {
+  return (
+    <div className="flex gap-1 rounded-lg border border-border p-0.5">
+      {HISTORY_RANGES.map((r) => (
+        <button
+          key={r.label}
+          onClick={() => onChange(r.secs)}
+          className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors duration-100 ${
+            range === r.secs
+              ? "bg-white/10 text-ink-primary"
+              : "text-ink-muted hover:bg-white/5 hover:text-ink-secondary"
+          }`}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Hint shown under a history chart while the range has no samples yet. */
+function HistoryHint({ count }: { count: number }) {
+  if (count >= 2) return null;
+  return (
+    <p className="mt-2 text-xs text-ink-muted">
+      Collecting history — samples are recorded while Flux is running.
+    </p>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -243,8 +294,10 @@ function DetailHeader({ title, subtitle }: { title: string; subtitle?: string })
   );
 }
 
-function CpuDetail() {
-  const { latest, timestamps, cpuHistory, isLocal } = useSelectedHostMetrics();
+function CpuDetail({ range }: { range: HistoryRange }) {
+  const { latest, timestamps, cpuHistory, isLocal, hostId } =
+    useSelectedHostMetrics();
+  const history = useHistory(hostId, range);
   const systemInfo = useSelectedSystemInfo();
   const [details, setDetails] = useState<CpuDetailsType | null>(null);
   useEffect(() => {
@@ -263,12 +316,35 @@ function CpuDetail() {
     <div>
       <DetailHeader title="CPU" subtitle={systemInfo?.cpu_model} />
       <div className="glass rounded-2xl border border-border p-4">
-        <AreaChart
-          timestamps={timestamps}
-          series={[{ values: cpuHistory, color: COLORS.cpu, label: "Utilization" }]}
-          yMax={100}
-          formatValue={(v) => `${v}%`}
-        />
+        {range == null ? (
+          <AreaChart
+            timestamps={timestamps}
+            series={[{ values: cpuHistory, color: COLORS.cpu, label: "Utilization" }]}
+            yMax={100}
+            formatValue={(v) => `${v}%`}
+          />
+        ) : (
+          <>
+            <AreaChart
+              timestamps={history.map((p) => p.ts)}
+              series={[
+                {
+                  values: history.map((p) => p.cpu_pct),
+                  color: COLORS.cpu,
+                  label: "Average",
+                },
+                {
+                  values: history.map((p) => p.cpu_max_pct),
+                  color: themeColor("statusWarning"),
+                  label: "Peak",
+                },
+              ]}
+              yMax={100}
+              formatValue={(v) => `${v.toFixed(1)}%`}
+            />
+            <HistoryHint count={history.length} />
+          </>
+        )}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Utilization" value={formatPercent(cpu.global_usage_pct)} />
@@ -356,8 +432,10 @@ function CpuDetail() {
   );
 }
 
-function MemoryDetail() {
-  const { latest, timestamps, memUsedPctHistory } = useSelectedHostMetrics();
+function MemoryDetail({ range }: { range: HistoryRange }) {
+  const { latest, timestamps, memUsedPctHistory, hostId } =
+    useSelectedHostMetrics();
+  const history = useHistory(hostId, range);
   if (!latest) return null;
   const mem = latest.memory;
   const usedKb = mem.total_kb - mem.free_kb - mem.cached_kb - mem.buffers_kb;
@@ -373,12 +451,34 @@ function MemoryDetail() {
     <div>
       <DetailHeader title="Memory" subtitle={`${formatKb(mem.total_kb)} total`} />
       <div className="glass rounded-2xl border border-border p-4">
-        <AreaChart
-          timestamps={timestamps}
-          series={[{ values: memUsedPctHistory, color: COLORS.memory, label: "Used" }]}
-          yMax={100}
-          formatValue={(v) => `${v}%`}
-        />
+        {range == null ? (
+          <AreaChart
+            timestamps={timestamps}
+            series={[{ values: memUsedPctHistory, color: COLORS.memory, label: "Used" }]}
+            yMax={100}
+            formatValue={(v) => `${v}%`}
+          />
+        ) : (
+          <>
+            <AreaChart
+              timestamps={history.map((p) => p.ts)}
+              series={[
+                {
+                  values: history.map((p) =>
+                    p.mem_total_kb > 0
+                      ? (p.mem_used_kb / p.mem_total_kb) * 100
+                      : 0,
+                  ),
+                  color: COLORS.memory,
+                  label: "Used",
+                },
+              ]}
+              yMax={100}
+              formatValue={(v) => `${v.toFixed(1)}%`}
+            />
+            <HistoryHint count={history.length} />
+          </>
+        )}
       </div>
       <div className="mt-4 glass rounded-2xl border border-border p-4">
         <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full">
@@ -524,22 +624,49 @@ function DiskDetail({ device }: { device: string }) {
   );
 }
 
-function NetDetail({ iface }: { iface: string }) {
-  const { latest, timestamps, netRx, netTx } = useSelectedHostMetrics();
+function NetDetail({ iface, range }: { iface: string; range: HistoryRange }) {
+  const { latest, timestamps, netRx, netTx, hostId } = useSelectedHostMetrics();
+  const history = useHistory(hostId, range);
   const current = latest?.network.find((n) => n.name === iface);
 
   return (
     <div>
-      <DetailHeader title={`Network — ${iface}`} />
+      <DetailHeader
+        title={`Network — ${iface}`}
+        // History is stored summed across interfaces, not per-interface.
+        subtitle={range != null ? "history: all interfaces combined" : undefined}
+      />
       <div className="glass rounded-2xl border border-border p-4">
-        <AreaChart
-          timestamps={timestamps}
-          series={[
-            { values: netRx[iface] ?? [], color: COLORS.net, label: "Download" },
-            { values: netTx[iface] ?? [], color: COLORS.netTx, label: "Upload" },
-          ]}
-          formatValue={(v) => formatBytesPerSec(v)}
-        />
+        {range == null ? (
+          <AreaChart
+            timestamps={timestamps}
+            series={[
+              { values: netRx[iface] ?? [], color: COLORS.net, label: "Download" },
+              { values: netTx[iface] ?? [], color: COLORS.netTx, label: "Upload" },
+            ]}
+            formatValue={(v) => formatBytesPerSec(v)}
+          />
+        ) : (
+          <>
+            <AreaChart
+              timestamps={history.map((p) => p.ts)}
+              series={[
+                {
+                  values: history.map((p) => p.net_rx_bps),
+                  color: COLORS.net,
+                  label: "Download",
+                },
+                {
+                  values: history.map((p) => p.net_tx_bps),
+                  color: COLORS.netTx,
+                  label: "Upload",
+                },
+              ]}
+              formatValue={(v) => formatBytesPerSec(v)}
+            />
+            <HistoryHint count={history.length} />
+          </>
+        )}
         <Legend
           entries={[
             { label: "Download", color: COLORS.net },

@@ -7,7 +7,7 @@ use std::io::{Read, Write};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::{Duration, Instant};
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use flux_core::process::ProcessInfo;
 use flux_core::protocol::{AgentEvent, AgentRequest};
@@ -170,6 +170,9 @@ fn handle_event(
             );
         }
         AgentEvent::Tick(snapshot) => {
+            if let Some(history) = &app.state::<crate::history::HistoryState>().0 {
+                history.record(crate::history::Sample::from_tick(host_id, &snapshot));
+            }
             let _ = app.emit(
                 EVENT_REMOTE_TICK,
                 RemoteEvent {
