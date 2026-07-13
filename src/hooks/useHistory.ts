@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { historyQuery } from "../lib/tauri";
-import type { HistoryPoint } from "../types/monitor";
+import { gpuHistoryQuery, historyQuery } from "../lib/tauri";
+import type { GpuHistoryPoint, HistoryPoint } from "../types/monitor";
 
 /** Time-range options for history charts; null = live ring buffer. */
 export const HISTORY_RANGES = [
@@ -41,5 +41,35 @@ export function useHistory(
       clearInterval(timer);
     };
   }, [hostId, rangeSecs]);
+  return points;
+}
+
+/** Persisted history for one GPU (by index) on a host, refreshed
+ * periodically. Empty in live mode or when the card has no samples yet. */
+export function useGpuHistory(
+  hostId: string,
+  rangeSecs: HistoryRange,
+  gpuIndex: number,
+): GpuHistoryPoint[] {
+  const [points, setPoints] = useState<GpuHistoryPoint[]>([]);
+  useEffect(() => {
+    if (rangeSecs == null) {
+      setPoints([]);
+      return;
+    }
+    let alive = true;
+    const load = () =>
+      gpuHistoryQuery(hostId, rangeSecs)
+        .then((p) => {
+          if (alive) setPoints(p.filter((row) => row.gpu_index === gpuIndex));
+        })
+        .catch(() => {});
+    load();
+    const timer = setInterval(load, REFRESH_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [hostId, rangeSecs, gpuIndex]);
   return points;
 }

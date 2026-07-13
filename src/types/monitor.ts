@@ -363,3 +363,14 @@ export interface HistoryPoint {
   net_tx_bps: number;
   temp_c: number | null;
 }
+
+/** One persisted GPU history sample (backend history.rs GpuHistoryPoint). */
+export interface GpuHistoryPoint {
+  gpu_index: number;
+  ts: number;
+  util_pct: number | null;
+  util_max_pct: number | null;
+  temp_c: number | null;
+  mem_used_mb: number | null;
+  mem_total_mb: number | null;
+}

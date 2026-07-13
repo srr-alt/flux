@@ -70,6 +70,7 @@ pub fn run() {
             commands_monitor::get_cpu_details,
             commands_monitor::get_gpu_processes,
             commands_monitor::history_query,
+            commands_monitor::gpu_history_query,
             commands_process::list_processes,
             commands_process::kill_process,
             commands_process::renice_process,
@@ -208,6 +209,26 @@ async fn monitor_loop(app: tauri::AppHandle) {
             let gpu_app = app.clone();
             tauri::async_runtime::spawn_blocking(move || {
                 let gpus = monitor::gpu::snapshot();
+                // GPU rides this half-cadence path, so history samples it here
+                // rather than from the CPU/mem tick. Local only — remote hosts
+                // don't collect GPU agentlessly.
+                if let Some(history) = &gpu_app.state::<history::HistoryState>().0 {
+                    let ts = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0);
+                    for (i, g) in gpus.iter().enumerate() {
+                        history.record_gpu(history::GpuSample {
+                            host_id: "local".into(),
+                            gpu_index: i as u32,
+                            ts,
+                            util_pct: g.utilization_pct.map(|v| v as f64),
+                            temp_c: g.temp_c.map(|v| v as f64),
+                            mem_used_mb: g.mem_used_mb,
+                            mem_total_mb: g.mem_total_mb,
+                        });
+                    }
+                }
                 *gpu_app.state::<AppState>().last_gpus.lock().unwrap() = gpus.clone();
                 let _ = gpu_app.emit(EVENT_GPU, &gpus);
             });

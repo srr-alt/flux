@@ -44,3 +44,21 @@ pub async fn history_query(
     .await
     .map_err(|e| e.to_string())?
 }
+
+/// Persisted per-GPU history for a host. Currently local-only.
+#[tauri::command]
+pub async fn gpu_history_query(
+    state: State<'_, crate::history::HistoryState>,
+    host_id: String,
+    range_secs: u64,
+) -> Result<Vec<crate::history::GpuHistoryPoint>, String> {
+    let Some(handle) = &state.0 else {
+        return Ok(Vec::new());
+    };
+    let db_path = handle.db_path.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::history::gpu_query(&db_path, &host_id, range_secs)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

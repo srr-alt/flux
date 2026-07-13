@@ -75,6 +75,26 @@ impl Sample {
     }
 }
 
+/// One GPU sample, per card. `gpu_index` disambiguates multi-GPU hosts.
+/// GPU rides a separate half-cadence path (nvidia-smi), so it can't live on
+/// the CPU/mem `Sample`; fields are optional because drivers like nouveau
+/// expose only partial data.
+pub struct GpuSample {
+    pub host_id: String,
+    pub gpu_index: u32,
+    pub ts: u64,
+    pub util_pct: Option<f64>,
+    pub temp_c: Option<f64>,
+    pub mem_used_mb: Option<u64>,
+    pub mem_total_mb: Option<u64>,
+}
+
+/// Writer-thread message: either a host metric sample or a per-GPU sample.
+pub enum Msg {
+    Metric(Sample),
+    Gpu(GpuSample),
+}
+
 /// Tauri-managed wrapper; `None` when the DB could not be opened.
 pub struct HistoryState(pub Option<HistoryHandle>);
 
@@ -82,13 +102,16 @@ pub struct HistoryState(pub Option<HistoryHandle>);
 /// best-effort and must never break monitoring.
 #[derive(Clone)]
 pub struct HistoryHandle {
-    tx: Sender<Sample>,
+    tx: Sender<Msg>,
     pub db_path: PathBuf,
 }
 
 impl HistoryHandle {
     pub fn record(&self, sample: Sample) {
-        let _ = self.tx.send(sample);
+        let _ = self.tx.send(Msg::Metric(sample));
+    }
+    pub fn record_gpu(&self, sample: GpuSample) {
+        let _ = self.tx.send(Msg::Gpu(sample));
     }
 }
 
@@ -103,7 +126,7 @@ pub fn spawn(data_dir: &Path) -> Option<HistoryHandle> {
             return None;
         }
     };
-    let (tx, rx) = std::sync::mpsc::channel::<Sample>();
+    let (tx, rx) = std::sync::mpsc::channel::<Msg>();
     let handle = HistoryHandle {
         tx,
         db_path: db_path.clone(),
@@ -148,6 +171,24 @@ fn open_writer(db_path: &Path) -> Result<Connection, rusqlite::Error> {
             temp_c REAL,
             PRIMARY KEY (host_id, ts)
         ) WITHOUT ROWID;
+        CREATE TABLE IF NOT EXISTS gpu_raw (
+            host_id TEXT NOT NULL, gpu_index INTEGER NOT NULL, ts INTEGER NOT NULL,
+            util_pct REAL, util_max_pct REAL, temp_c REAL,
+            mem_used_mb INTEGER, mem_total_mb INTEGER,
+            PRIMARY KEY (host_id, gpu_index, ts)
+        ) WITHOUT ROWID;
+        CREATE TABLE IF NOT EXISTS gpu_1m (
+            host_id TEXT NOT NULL, gpu_index INTEGER NOT NULL, ts INTEGER NOT NULL,
+            util_pct REAL, util_max_pct REAL, temp_c REAL,
+            mem_used_mb INTEGER, mem_total_mb INTEGER,
+            PRIMARY KEY (host_id, gpu_index, ts)
+        ) WITHOUT ROWID;
+        CREATE TABLE IF NOT EXISTS gpu_10m (
+            host_id TEXT NOT NULL, gpu_index INTEGER NOT NULL, ts INTEGER NOT NULL,
+            util_pct REAL, util_max_pct REAL, temp_c REAL,
+            mem_used_mb INTEGER, mem_total_mb INTEGER,
+            PRIMARY KEY (host_id, gpu_index, ts)
+        ) WITHOUT ROWID;
         CREATE TABLE IF NOT EXISTS meta (
             key TEXT PRIMARY KEY, value INTEGER NOT NULL
         );",
@@ -169,6 +210,40 @@ struct Accum {
     temp_n: u32,
 }
 
+/// Per-(host, gpu_index) accumulator over one RAW_STEP window. Optional
+/// metrics track their own sample count so a missing reading stores NULL
+/// rather than a bogus zero.
+#[derive(Default)]
+struct GpuAccum {
+    util_sum: f64,
+    util_max: f64,
+    util_n: u32,
+    temp_sum: f64,
+    temp_n: u32,
+    mem_used_mb: Option<u64>,
+    mem_total_mb: Option<u64>,
+}
+
+impl GpuAccum {
+    fn add(&mut self, s: &GpuSample) {
+        if let Some(u) = s.util_pct {
+            self.util_sum += u;
+            self.util_max = self.util_max.max(u);
+            self.util_n += 1;
+        }
+        if let Some(t) = s.temp_c {
+            self.temp_sum += t;
+            self.temp_n += 1;
+        }
+        if s.mem_used_mb.is_some() {
+            self.mem_used_mb = s.mem_used_mb;
+        }
+        if s.mem_total_mb.is_some() {
+            self.mem_total_mb = s.mem_total_mb;
+        }
+    }
+}
+
 impl Accum {
     fn add(&mut self, s: &Sample) {
         self.n += 1;
@@ -185,21 +260,29 @@ impl Accum {
     }
 }
 
-fn writer_loop(conn: Connection, rx: Receiver<Sample>) {
+fn writer_loop(conn: Connection, rx: Receiver<Msg>) {
     let mut accums: HashMap<String, Accum> = HashMap::new();
+    let mut gpu_accums: HashMap<(String, u32), GpuAccum> = HashMap::new();
     let mut last_flush = std::time::Instant::now();
     let mut last_compact = std::time::Instant::now();
 
     loop {
         match rx.recv_timeout(Duration::from_secs(1)) {
-            Ok(sample) => accums.entry(sample.host_id.clone()).or_default().add(&sample),
+            Ok(Msg::Metric(s)) => accums.entry(s.host_id.clone()).or_default().add(&s),
+            Ok(Msg::Gpu(s)) => gpu_accums
+                .entry((s.host_id.clone(), s.gpu_index))
+                .or_default()
+                .add(&s),
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return,
         }
 
-        if last_flush.elapsed().as_secs() >= RAW_STEP_SECS && !accums.is_empty() {
+        if last_flush.elapsed().as_secs() >= RAW_STEP_SECS
+            && (!accums.is_empty() || !gpu_accums.is_empty())
+        {
             let ts = now_secs() / RAW_STEP_SECS * RAW_STEP_SECS;
             flush(&conn, ts, &mut accums);
+            flush_gpu(&conn, ts, &mut gpu_accums);
             last_flush = std::time::Instant::now();
         }
         if last_compact.elapsed().as_secs() >= COMPACT_EVERY_SECS {
@@ -241,24 +324,55 @@ fn flush(conn: &Connection, ts: u64, accums: &mut HashMap<String, Accum>) {
     accums.clear();
 }
 
+fn flush_gpu(conn: &Connection, ts: u64, accums: &mut HashMap<(String, u32), GpuAccum>) {
+    let result: Result<(), rusqlite::Error> = (|| {
+        let mut stmt = conn.prepare_cached(
+            "INSERT OR REPLACE INTO gpu_raw
+             (host_id, gpu_index, ts, util_pct, util_max_pct, temp_c,
+              mem_used_mb, mem_total_mb)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        )?;
+        for ((host, index), a) in accums.iter() {
+            stmt.execute(rusqlite::params![
+                host,
+                index,
+                ts as i64,
+                (a.util_n > 0).then(|| a.util_sum / a.util_n as f64),
+                (a.util_n > 0).then_some(a.util_max),
+                (a.temp_n > 0).then(|| a.temp_sum / a.temp_n as f64),
+                a.mem_used_mb.map(|v| v as i64),
+                a.mem_total_mb.map(|v| v as i64),
+            ])?;
+        }
+        Ok(())
+    })();
+    if let Err(err) = result {
+        eprintln!("history: gpu flush failed: {err}");
+    }
+    accums.clear();
+}
+
 /// Roll complete windows into the next tier, then trim per retention.
 /// `meta` tracks the high-water mark per tier so windows roll exactly once.
 fn compact(conn: &Connection) -> Result<(), rusqlite::Error> {
     let now = now_secs();
     rollup(conn, "samples_raw", "samples_1m", "rolled_1m", 60, now)?;
     rollup(conn, "samples_1m", "samples_10m", "rolled_10m", 600, now)?;
-    conn.execute(
-        "DELETE FROM samples_raw WHERE ts < ?1",
-        [now.saturating_sub(RAW_KEEP_SECS) as i64],
-    )?;
-    conn.execute(
-        "DELETE FROM samples_1m WHERE ts < ?1",
-        [now.saturating_sub(M1_KEEP_SECS) as i64],
-    )?;
-    conn.execute(
-        "DELETE FROM samples_10m WHERE ts < ?1",
-        [now.saturating_sub(M10_KEEP_SECS) as i64],
-    )?;
+    gpu_rollup(conn, "gpu_raw", "gpu_1m", "gpu_rolled_1m", 60, now)?;
+    gpu_rollup(conn, "gpu_1m", "gpu_10m", "gpu_rolled_10m", 600, now)?;
+    for (table, keep) in [
+        ("samples_raw", RAW_KEEP_SECS),
+        ("samples_1m", M1_KEEP_SECS),
+        ("samples_10m", M10_KEEP_SECS),
+        ("gpu_raw", RAW_KEEP_SECS),
+        ("gpu_1m", M1_KEEP_SECS),
+        ("gpu_10m", M10_KEEP_SECS),
+    ] {
+        conn.execute(
+            &format!("DELETE FROM {table} WHERE ts < ?1"),
+            [now.saturating_sub(keep) as i64],
+        )?;
+    }
     Ok(())
 }
 
@@ -294,6 +408,46 @@ fn rollup(
              FROM {src}
              WHERE ts >= {since} AND ts < {upto}
              GROUP BY host_id, ts / {step}"
+        ),
+        [],
+    )?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)",
+        rusqlite::params![mark, upto as i64],
+    )?;
+    Ok(())
+}
+
+/// GPU tier rollup — like `rollup` but grouped by gpu_index too and with the
+/// GPU column set (optional metrics averaged, ignoring NULLs).
+fn gpu_rollup(
+    conn: &Connection,
+    src: &str,
+    dst: &str,
+    mark: &str,
+    step: u64,
+    now: u64,
+) -> Result<(), rusqlite::Error> {
+    let since: u64 = conn
+        .query_row("SELECT value FROM meta WHERE key = ?1", [mark], |r| {
+            r.get::<_, i64>(0)
+        })
+        .unwrap_or(0) as u64;
+    let upto = now / step * step;
+    if upto <= since {
+        return Ok(());
+    }
+    conn.execute(
+        &format!(
+            "INSERT OR REPLACE INTO {dst}
+             (host_id, gpu_index, ts, util_pct, util_max_pct, temp_c,
+              mem_used_mb, mem_total_mb)
+             SELECT host_id, gpu_index, ts / {step} * {step},
+                    AVG(util_pct), MAX(util_max_pct), AVG(temp_c),
+                    CAST(AVG(mem_used_mb) AS INTEGER), MAX(mem_total_mb)
+             FROM {src}
+             WHERE ts >= {since} AND ts < {upto}
+             GROUP BY host_id, gpu_index, ts / {step}"
         ),
         [],
     )?;
@@ -370,6 +524,58 @@ pub fn query(
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
+#[derive(Serialize, Clone)]
+pub struct GpuHistoryPoint {
+    pub gpu_index: u32,
+    pub ts: u64,
+    pub util_pct: Option<f64>,
+    pub util_max_pct: Option<f64>,
+    pub temp_c: Option<f64>,
+    pub mem_used_mb: Option<u64>,
+    pub mem_total_mb: Option<u64>,
+}
+
+/// Read GPU history for every card on a host over the range. The frontend
+/// groups the flat list by `gpu_index`.
+pub fn gpu_query(
+    db_path: &Path,
+    host_id: &str,
+    range_secs: u64,
+) -> Result<Vec<GpuHistoryPoint>, String> {
+    let table = if range_secs <= RAW_KEEP_SECS {
+        "gpu_raw"
+    } else if range_secs <= M1_KEEP_SECS {
+        "gpu_1m"
+    } else {
+        "gpu_10m"
+    };
+    let conn = Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .map_err(|e| e.to_string())?;
+    let since = now_secs().saturating_sub(range_secs);
+    let mut stmt = conn
+        .prepare(&format!(
+            "SELECT gpu_index, ts, util_pct, util_max_pct, temp_c,
+                    mem_used_mb, mem_total_mb
+             FROM {table} WHERE host_id = ?1 AND ts >= ?2
+             ORDER BY gpu_index, ts"
+        ))
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(rusqlite::params![host_id, since as i64], |r| {
+            Ok(GpuHistoryPoint {
+                gpu_index: r.get(0)?,
+                ts: r.get::<_, i64>(1)? as u64,
+                util_pct: r.get(2)?,
+                util_max_pct: r.get(3)?,
+                temp_c: r.get(4)?,
+                mem_used_mb: r.get::<_, Option<i64>>(5)?.map(|v| v as u64),
+                mem_total_mb: r.get::<_, Option<i64>>(6)?.map(|v| v as u64),
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -397,12 +603,34 @@ mod tests {
         // Two hosts, samples over several raw windows in the recent past.
         let base = now_secs() - 600;
         let mut accums: HashMap<String, Accum> = HashMap::new();
+        let mut gpu_accums: HashMap<(String, u32), GpuAccum> = HashMap::new();
         for w in 0..30 {
             let ts = (base + w * RAW_STEP_SECS) / RAW_STEP_SECS * RAW_STEP_SECS;
             for host in ["local", "remote-1"] {
                 accums.entry(host.into()).or_default().add(&sample(host, ts, 25.0 + w as f64));
             }
+            // One local host with two GPUs; util rises, nouveau-style card 1
+            // reports no util (None) but has a temp.
+            gpu_accums.entry(("local".into(), 0)).or_default().add(&GpuSample {
+                host_id: "local".into(),
+                gpu_index: 0,
+                ts,
+                util_pct: Some(10.0 + w as f64),
+                temp_c: Some(60.0),
+                mem_used_mb: Some(2048),
+                mem_total_mb: Some(8192),
+            });
+            gpu_accums.entry(("local".into(), 1)).or_default().add(&GpuSample {
+                host_id: "local".into(),
+                gpu_index: 1,
+                ts,
+                util_pct: None,
+                temp_c: Some(45.0),
+                mem_used_mb: None,
+                mem_total_mb: None,
+            });
             flush(&conn, ts, &mut accums);
+            flush_gpu(&conn, ts, &mut gpu_accums);
         }
         compact(&conn).unwrap();
 
@@ -421,6 +649,22 @@ mod tests {
 
         // Unknown host: empty, not an error.
         assert!(query(&db, "nope", RAW_KEEP_SECS).unwrap().is_empty());
+
+        // GPU history: two cards, raw tier has both indices.
+        let gpu = gpu_query(&db, "local", RAW_KEEP_SECS).unwrap();
+        assert_eq!(gpu.iter().filter(|p| p.gpu_index == 0).count(), 30);
+        assert_eq!(gpu.iter().filter(|p| p.gpu_index == 1).count(), 30);
+        let g0 = gpu.iter().find(|p| p.gpu_index == 0).unwrap();
+        assert_eq!(g0.mem_total_mb, Some(8192));
+        assert!(g0.util_pct.is_some());
+        // Card 1 reports no util but does report temp — util stays NULL.
+        let g1 = gpu.iter().find(|p| p.gpu_index == 1).unwrap();
+        assert!(g1.util_pct.is_none());
+        assert_eq!(g1.temp_c, Some(45.0));
+        // GPU 1m rollup exists and preserves the NULL-util card.
+        let gpu_m1 = gpu_query(&db, "local", M1_KEEP_SECS + 1).unwrap();
+        assert!(gpu_m1.iter().any(|p| p.gpu_index == 1 && p.util_pct.is_none()));
+        assert!(gpu_m1.iter().all(|p| p.ts % 60 == 0));
 
         std::fs::remove_dir_all(&dir).ok();
     }

@@ -16,12 +16,14 @@ import { ScreenHeader } from "../components/layout/ScreenHeader";
 import { useSelectedHostName } from "../hooks/useSelectedHostName";
 import { HostGate } from "../components/hosts/HostGate";
 import { useMonitorStore } from "../state/monitorStore";
+import { LOCAL_HOST_ID } from "../state/hostsStore";
 import {
   useSelectedHostMetrics,
   useSelectedSystemInfo,
 } from "../hooks/useHostMetrics";
 import {
   HISTORY_RANGES,
+  useGpuHistory,
   useHistory,
   type HistoryRange,
 } from "../hooks/useHistory";
@@ -172,7 +174,8 @@ function PerformanceInner() {
       <div className="min-w-0 flex-1 overflow-y-auto p-6">
         {(selected === "cpu" ||
           selected === "memory" ||
-          selected.startsWith("net:")) && (
+          selected.startsWith("net:") ||
+          (isLocal && selected.startsWith("gpu:"))) && (
           <div className="mb-3 flex justify-end">
             <RangePicker range={range} onChange={setRange} />
           </div>
@@ -186,7 +189,7 @@ function PerformanceInner() {
           <NetDetail iface={selected.slice(4)} range={range} />
         )}
         {isLocal && selected.startsWith("gpu:") && (
-          <GpuDetail index={Number(selected.slice(4))} />
+          <GpuDetail index={Number(selected.slice(4))} range={range} />
         )}
       </div>
       </div>
@@ -735,11 +738,12 @@ function NetDetail({ iface, range }: { iface: string; range: HistoryRange }) {
   );
 }
 
-function GpuDetail({ index }: { index: number }) {
+function GpuDetail({ index, range }: { index: number; range: HistoryRange }) {
   const gpus = useMonitorStore((s) => s.gpus);
   const gpuTimestamps = useMonitorStore((s) => s.gpuTimestamps);
   const gpuUtil = useMonitorStore((s) => s.gpuUtil);
   const gpuTemp = useMonitorStore((s) => s.gpuTemp);
+  const history = useGpuHistory(LOCAL_HOST_ID, range, index);
   const gpu = gpus[index];
   if (!gpu) return null;
 
@@ -750,23 +754,62 @@ function GpuDetail({ index }: { index: number }) {
     <div>
       <DetailHeader title="GPU" subtitle={`${gpu.name} · ${gpu.driver}`} />
       <div className="glass rounded-2xl border border-border p-4">
-        <AreaChart
-          timestamps={gpuTimestamps}
-          series={[
-            hasUtil
-              ? { values: gpuUtil[key] ?? [], color: COLORS.gpu, label: "Utilization" }
-              : { values: gpuTemp[key] ?? [], color: COLORS.gpu, label: "Temperature" },
-          ]}
-          yMax={hasUtil ? 100 : undefined}
-          formatValue={(v) => (hasUtil ? `${v}%` : `${v}°C`)}
-        />
-        <Legend
-          entries={[
-            hasUtil
-              ? { label: "Utilization", color: COLORS.gpu }
-              : { label: "Temperature", color: COLORS.gpu },
-          ]}
-        />
+        {range == null ? (
+          <>
+            <AreaChart
+              timestamps={gpuTimestamps}
+              series={[
+                hasUtil
+                  ? { values: gpuUtil[key] ?? [], color: COLORS.gpu, label: "Utilization" }
+                  : { values: gpuTemp[key] ?? [], color: COLORS.gpu, label: "Temperature" },
+              ]}
+              yMax={hasUtil ? 100 : undefined}
+              formatValue={(v) => (hasUtil ? `${v}%` : `${v}°C`)}
+            />
+            <Legend
+              entries={[
+                hasUtil
+                  ? { label: "Utilization", color: COLORS.gpu }
+                  : { label: "Temperature", color: COLORS.gpu },
+              ]}
+            />
+          </>
+        ) : (
+          <>
+            {hasUtil ? (
+              <AreaChart
+                timestamps={history.map((p) => p.ts)}
+                series={[
+                  {
+                    values: history.map((p) => p.util_pct),
+                    color: COLORS.gpu,
+                    label: "Average",
+                  },
+                  {
+                    values: history.map((p) => p.util_max_pct),
+                    color: themeColor("statusWarning"),
+                    label: "Peak",
+                  },
+                ]}
+                yMax={100}
+                formatValue={(v) => `${v.toFixed(1)}%`}
+              />
+            ) : (
+              <AreaChart
+                timestamps={history.map((p) => p.ts)}
+                series={[
+                  {
+                    values: history.map((p) => p.temp_c),
+                    color: COLORS.gpu,
+                    label: "Temperature",
+                  },
+                ]}
+                formatValue={(v) => `${v.toFixed(0)}°C`}
+              />
+            )}
+            <HistoryHint count={history.length} />
+          </>
+        )}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat

@@ -9,6 +9,7 @@ import type {
   CpuDetails,
   DiskSnapshot,
   DiskUsageRow,
+  GpuHistoryPoint,
   GpuProcess,
   GpuSnapshot,
   HistoryPoint,
@@ -61,6 +62,14 @@ export function historyQuery(
   rangeSecs: number,
 ): Promise<HistoryPoint[]> {
   return invoke("history_query", { hostId, rangeSecs });
+}
+
+/** Persisted per-GPU history for a host (local only for now). */
+export function gpuHistoryQuery(
+  hostId: string,
+  rangeSecs: number,
+): Promise<GpuHistoryPoint[]> {
+  return invoke("gpu_history_query", { hostId, rangeSecs });
 }
 
 export function onTick(
