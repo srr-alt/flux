@@ -1,5 +1,6 @@
 import {
   Activity,
+  Bell,
   Container,
   Server,
   ListTree,
@@ -14,6 +15,7 @@ export type PageId =
   | "performance"
   | "processes"
   | "sensors"
+  | "alerts"
   | "docker"
   | "tools"
   | "settings";
@@ -29,6 +31,7 @@ export const NAVIGATION: NavEntry[] = [
   { id: "performance", label: "Performance", icon: Activity },
   { id: "processes", label: "Processes", icon: ListTree },
   { id: "sensors", label: "Sensors", icon: Thermometer },
+  { id: "alerts", label: "Alerts", icon: Bell },
   { id: "docker", label: "Docker", icon: Container },
   { id: "tools", label: "Tools", icon: Wrench },
   { id: "settings", label: "Settings", icon: Settings2 },

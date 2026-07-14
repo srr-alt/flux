@@ -1,4 +1,6 @@
+pub mod alerts;
 mod api_server;
+mod commands_alerts;
 pub mod commands_hosts;
 mod commands_modules;
 mod commands_monitor;
@@ -9,6 +11,7 @@ mod modules;
 mod monitor;
 pub mod remote;
 pub mod state;
+pub mod tray;
 
 use std::io::Write;
 use std::sync::atomic::Ordering;
@@ -62,6 +65,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(AppState::new())
         .manage(modules::docker_shell::ShellSessions::default())
         .invoke_handler(tauri::generate_handler![
@@ -112,6 +116,12 @@ pub fn run() {
             commands_modules::docker_shell_write,
             commands_modules::docker_shell_resize,
             commands_modules::docker_shell_close,
+            commands_alerts::alerts_list_rules,
+            commands_alerts::alerts_save_rule,
+            commands_alerts::alerts_delete_rule,
+            commands_alerts::alerts_active,
+            commands_alerts::alerts_events,
+            commands_alerts::alerts_test_notification,
             commands_settings::set_refresh_interval,
             commands_settings::start_usage_log,
             commands_settings::stop_usage_log,
@@ -133,7 +143,15 @@ pub fn run() {
             // History recorder: best-effort, app runs fine without it.
             let data_dir = app.path().app_data_dir().expect("app data dir");
             let _ = std::fs::create_dir_all(&data_dir);
-            app.manage(history::HistoryState(history::spawn(&data_dir)));
+            let history_handle = history::spawn(&data_dir);
+            let db_path = history_handle.as_ref().map(|h| h.db_path.clone());
+            app.manage(history::HistoryState(history_handle));
+            app.manage(alerts::AlertsState(std::sync::Arc::new(alerts::Engine::new(
+                app.handle().clone(),
+                &data_dir,
+                db_path,
+            ))));
+            tray::init(app)?;
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(monitor_loop(handle));
             commands_hosts::autoconnect_saved_hosts(app.handle());
@@ -162,7 +180,9 @@ async fn monitor_loop(app: tauri::AppHandle) {
 
         // Skip collection entirely while minimized — a system monitor
         // shouldn't burn CPU when nobody is looking at it. The usage
-        // logger still records: logging while away is its whole point.
+        // logger still records (logging while away is its whole point),
+        // and enabled alert rules keep collection alive too: firing at
+        // 3pm-while-minimized is the whole point of alerts.
         let minimized = app
             .get_webview_window("main")
             .map(|w| w.is_minimized().unwrap_or(false))
@@ -173,7 +193,8 @@ async fn monitor_loop(app: tauri::AppHandle) {
             .lock()
             .unwrap()
             .is_some();
-        if minimized && !logging {
+        let alerting = app.state::<alerts::AlertsState>().0.has_enabled_rules();
+        if minimized && !logging && !alerting {
             continue;
         }
 
@@ -181,8 +202,10 @@ async fn monitor_loop(app: tauri::AppHandle) {
         let snapshot = collect_tick(&state, elapsed);
         *state.last_snapshot.lock().unwrap() = Some(snapshot.clone());
         write_log_row(&state, &snapshot);
+        let sample = history::Sample::from_tick("local", &snapshot);
+        app.state::<alerts::AlertsState>().0.observe(&sample);
         if let Some(history) = &app.state::<history::HistoryState>().0 {
-            history.record(history::Sample::from_tick("local", &snapshot));
+            history.record(sample);
         }
         if !minimized {
             let _ = app.emit(EVENT_TICK, &snapshot);

@@ -85,8 +85,10 @@ pub fn run(
             match agentless::poll(&session, &mut deltas) {
                 Ok(Some((tick, disks))) => {
                     consecutive_failures = 0;
+                    let sample = crate::history::Sample::from_tick(&host_id, &tick);
+                    app.state::<crate::alerts::AlertsState>().0.observe(&sample);
                     if let Some(history) = &app.state::<crate::history::HistoryState>().0 {
-                        history.record(crate::history::Sample::from_tick(&host_id, &tick));
+                        history.record(sample);
                     }
                     let _ = app.emit(
                         EVENT_REMOTE_TICK,

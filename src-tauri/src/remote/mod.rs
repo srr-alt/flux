@@ -64,6 +64,8 @@ pub fn publish_status(
         .unwrap()
         .insert(host_id.to_string(), event.clone());
     let _ = app.emit(EVENT_HOST_STATUS, event);
+    // Host health feeds the tray dot (amber when a host is unreachable).
+    crate::tray::refresh(app);
 }
 
 pub const EVENT_HOST_STATUS: &str = "hosts://status";

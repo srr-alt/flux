@@ -30,6 +30,7 @@ import type {
   VolumeInfo,
 } from "../types/monitor";
 import type { HostStatus, HostView, NewHost, TestResult } from "../types/hosts";
+import type { ActiveAlert, AlertEventRow, AlertRule } from "../types/alerts";
 
 export const EVENTS = {
   TICK: "monitor://tick",
@@ -94,6 +95,43 @@ export function onSensors(
   callback: (chips: HwmonChip[]) => void,
 ): Promise<UnlistenFn> {
   return listen<HwmonChip[]>(EVENTS.SENSORS, (event) => callback(event.payload));
+}
+
+// --- Alerts ---
+
+/** Fired when an alert starts/stops firing or rules change; payload is the
+ * current active list. */
+export const ALERTS_EVENT = "alerts://changed";
+
+export function alertsListRules(): Promise<AlertRule[]> {
+  return invoke("alerts_list_rules");
+}
+
+/** Upsert (empty id = create). Returns the full rule list. */
+export function alertsSaveRule(rule: AlertRule): Promise<AlertRule[]> {
+  return invoke("alerts_save_rule", { rule });
+}
+
+export function alertsDeleteRule(id: string): Promise<AlertRule[]> {
+  return invoke("alerts_delete_rule", { id });
+}
+
+export function alertsActive(): Promise<ActiveAlert[]> {
+  return invoke("alerts_active");
+}
+
+export function alertsEvents(limit: number): Promise<AlertEventRow[]> {
+  return invoke("alerts_events", { limit });
+}
+
+export function alertsTestNotification(): Promise<void> {
+  return invoke("alerts_test_notification");
+}
+
+export function onAlertsChanged(
+  callback: (active: ActiveAlert[]) => void,
+): Promise<UnlistenFn> {
+  return listen<ActiveAlert[]>(ALERTS_EVENT, (e) => callback(e.payload));
 }
 
 // --- Processes ---

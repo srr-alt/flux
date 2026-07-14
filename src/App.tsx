@@ -8,6 +8,7 @@ import { useFleetEvents } from "./hooks/useFleetEvents";
 import { useMonitorTick } from "./hooks/useMonitorTick";
 import { LOCAL_HOST_ID, useHostsStore } from "./state/hostsStore";
 import { useLockStore } from "./state/lockStore";
+import { Alerts } from "./pages/Alerts";
 import { Docker } from "./pages/Docker";
 import { Fleet } from "./pages/Fleet";
 import { Performance } from "./pages/Performance";
@@ -21,6 +22,7 @@ const PAGES: Record<PageId, ComponentType<{ onNavigate?: (page: PageId) => void 
   performance: Performance,
   processes: Processes,
   sensors: Sensors,
+  alerts: Alerts,
   docker: Docker,
   tools: Tools,
   settings: Settings,
@@ -32,9 +34,11 @@ function App() {
   const [page, setPage] = useState<PageId>("performance");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const locked = useLockStore((s) => s.locked);
-  // Privacy lock hides Fleet — bounce to Performance if it engages there,
-  // and pin the machine picker to local so no remote data shows anywhere.
-  const activePage = locked && page === "fleet" ? "performance" : page;
+  // Privacy lock hides Fleet and Alerts — bounce to Performance if it
+  // engages there, and pin the machine picker to local so no remote data
+  // shows anywhere.
+  const activePage =
+    locked && (page === "fleet" || page === "alerts") ? "performance" : page;
   const Page = PAGES[activePage];
 
   useEffect(() => {
