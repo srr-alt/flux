@@ -4,6 +4,7 @@ pub mod docker_prefs;
 pub mod docker_shell;
 pub mod hardware;
 pub mod services;
+pub mod smart;
 pub mod startup;
 pub mod uninstaller;
 

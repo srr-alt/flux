@@ -392,6 +392,18 @@ export function getUsageLogStatus(): Promise<UsageLogStatus> {
   return invoke("get_usage_log_status");
 }
 
+// --- SMART disk health ---
+
+/** SMART report for one block device; privileged retries via pkexec
+ * (local only, after an explicit user click). */
+export function smartReport(
+  hostId: string,
+  device: string,
+  privileged = false,
+): Promise<import("../types/monitor").SmartOutcome> {
+  return invoke("smart_report", { hostId, device, privileged });
+}
+
 // --- Hardware info ---
 
 export function getHardwareInfo(): Promise<InfoSection[]> {

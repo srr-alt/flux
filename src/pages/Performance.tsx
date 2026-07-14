@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AreaChart } from "../components/charts/AreaChart";
 import { Meter } from "../components/charts/Meter";
 import { Sparkline } from "../components/charts/Sparkline";
+import { SmartCard } from "../components/monitor/SmartCard";
 import {
   formatBytes,
   formatBytesPerSec,
@@ -554,7 +555,8 @@ function MemoryDetail({ range }: { range: HistoryRange }) {
 }
 
 function DiskDetail({ device }: { device: string }) {
-  const { disks, diskTimestamps, diskRead, diskWrite } = useSelectedHostMetrics();
+  const { disks, diskTimestamps, diskRead, diskWrite, hostId } =
+    useSelectedHostMetrics();
   const mounts =
     disks?.mounts.filter((m) => m.device.includes(device) && m.total_bytes > 0) ?? [];
   const io = disks?.io.find((d) => d.device === device);
@@ -623,6 +625,7 @@ function DiskDetail({ device }: { device: string }) {
           </div>
         </div>
       )}
+      <SmartCard hostId={hostId} device={device} />
     </div>
   );
 }

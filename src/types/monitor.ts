@@ -323,6 +323,30 @@ export interface PackageInfo {
   summary: string;
 }
 
+export interface SmartDisk {
+  device: string;
+  model: string | null;
+  serial: string | null;
+  firmware: string | null;
+  capacity_bytes: number | null;
+  healthy: boolean | null;
+  temp_c: number | null;
+  power_on_hours: number | null;
+  power_cycles: number | null;
+  percentage_used: number | null;
+  available_spare_pct: number | null;
+  media_errors: number | null;
+  reallocated_sectors: number | null;
+  pending_sectors: number | null;
+  offline_uncorrectable: number | null;
+}
+
+export interface SmartOutcome {
+  disk: SmartDisk | null;
+  failure: "not_installed" | "permission_denied" | "error" | null;
+  message: string | null;
+}
+
 export interface UsageLogStatus {
   active: boolean;
   path: string | null;

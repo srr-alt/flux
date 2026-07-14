@@ -93,6 +93,7 @@ pub fn run() {
             commands_modules::list_packages,
             commands_modules::uninstall_package,
             commands_modules::get_hardware_info,
+            commands_modules::smart_report,
             commands_modules::list_containers,
             commands_modules::container_stats,
             commands_modules::container_action,

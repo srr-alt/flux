@@ -1,5 +1,5 @@
 use crate::modules::{
-    cleaner, docker, docker_prefs, docker_shell, hardware, services, startup, uninstaller,
+    cleaner, docker, docker_prefs, docker_shell, hardware, services, smart, startup, uninstaller,
 };
 
 // --- Services ---
@@ -285,4 +285,37 @@ pub async fn get_hardware_info() -> Vec<hardware::InfoSection> {
     tauri::async_runtime::spawn_blocking(hardware::collect)
         .await
         .unwrap_or_default()
+}
+
+// --- SMART disk health ---
+
+/// SMART report for one block device on a host. Remote hosts run smartctl
+/// over a one-shot SSH session. `privileged` retries locally via pkexec.
+#[tauri::command]
+pub async fn smart_report(
+    app: tauri::AppHandle,
+    host_id: String,
+    device: String,
+    privileged: bool,
+) -> Result<smart::SmartOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        if host_id == "local" {
+            smart::local(&device, privileged)
+        } else {
+            use tauri::Manager;
+            let config = app
+                .state::<crate::state::AppState>()
+                .hosts
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|h| h.id == host_id)
+                .cloned()
+                .ok_or("unknown host")?;
+            let known_hosts = crate::commands_hosts::data_dir(&app).join("known_hosts");
+            smart::remote(&config, &known_hosts, &device)
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
