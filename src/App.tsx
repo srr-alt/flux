@@ -3,11 +3,13 @@ import { AssistantPanel } from "./components/layout/AssistantPanel";
 import { ResizeHandles } from "./components/layout/ResizeHandles";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TitleBar } from "./components/layout/TitleBar";
+import { HostTerminal } from "./components/terminal/HostTerminal";
 import type { PageId } from "./config/navigation";
 import { useFleetEvents } from "./hooks/useFleetEvents";
 import { useMonitorTick } from "./hooks/useMonitorTick";
 import { LOCAL_HOST_ID, useHostsStore } from "./state/hostsStore";
 import { useLockStore } from "./state/lockStore";
+import { useTerminalStore } from "./state/terminalStore";
 import { Docker } from "./pages/Docker";
 import { Fleet } from "./pages/Fleet";
 import { Performance } from "./pages/Performance";
@@ -38,8 +40,32 @@ function App() {
   const Page = PAGES[activePage];
 
   useEffect(() => {
-    if (locked) useHostsStore.getState().setSelected(LOCAL_HOST_ID);
+    if (locked) {
+      useHostsStore.getState().setSelected(LOCAL_HOST_ID);
+      // Remote shells are fleet data too.
+      const term = useTerminalStore.getState();
+      if (term.hostId !== null && term.hostId !== LOCAL_HOST_ID) term.close();
+    }
   }, [locked]);
+
+  // Ctrl+` — terminal drop-in for the selected host (local while locked).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || e.key !== "`") return;
+      e.preventDefault();
+      const term = useTerminalStore.getState();
+      if (term.hostId !== null) {
+        term.close();
+        return;
+      }
+      const selected = useHostsStore.getState().selectedHostId;
+      term.open(
+        useLockStore.getState().locked ? LOCAL_HOST_ID : selected,
+      );
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <main className="relative isolate flex h-screen w-screen flex-col overflow-hidden bg-page">
@@ -70,6 +96,7 @@ function App() {
       {assistantOpen && !locked && (
         <AssistantPanel onClose={() => setAssistantOpen(false)} />
       )}
+      <HostTerminal />
     </main>
   );
 }

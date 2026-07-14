@@ -13,6 +13,7 @@ import { deployAgent, listHosts, onDeployProgress, removeHost } from "../lib/tau
 import { emptySeries, useFleetStore, type HostSeries } from "../state/fleetStore";
 import { LOCAL_HOST_ID, useHostsStore } from "../state/hostsStore";
 import { useMonitorStore } from "../state/monitorStore";
+import { useTerminalStore } from "../state/terminalStore";
 
 interface FleetProps {
   onNavigate?: (page: PageId) => void;
@@ -167,6 +168,7 @@ export function Fleet({ onNavigate }: FleetProps) {
           systemInfo={localInfo}
           series={localSeries}
           onOpen={() => open(LOCAL_HOST_ID)}
+          onShell={() => useTerminalStore.getState().open(LOCAL_HOST_ID)}
         />
         {hosts.map((host) => (
           <HostTile
@@ -176,6 +178,7 @@ export function Fleet({ onNavigate }: FleetProps) {
             systemInfo={systemInfos[host.id] ?? null}
             series={byHost[host.id] ?? emptySeries()}
             onOpen={() => open(host.id)}
+            onShell={() => useTerminalStore.getState().open(host.id)}
             busyText={deploying[host.id]}
             onDeployAgent={() => {
               setDeploying((prev) => ({ ...prev, [host.id]: "deploying agent…" }));

@@ -283,6 +283,42 @@ export function dockerShellClose(session: number): Promise<void> {
   return invoke("docker_shell_close", { session });
 }
 
+// --- Host terminal ---
+
+// PTY output streams on TERMINAL_EVENT with the same payload shape as the
+// docker shell: { session, data: number[], exited }.
+export const TERMINAL_EVENT = "terminal://output";
+
+/** Shell on a host; hostId "local" is this machine, others go over SSH. */
+export function terminalOpen(
+  hostId: string,
+  cols: number,
+  rows: number,
+): Promise<number> {
+  return invoke("terminal_open", { hostId, cols, rows });
+}
+
+export function terminalWrite(session: number, data: number[]): Promise<void> {
+  return invoke("terminal_write", { session, data });
+}
+
+export function terminalResize(
+  session: number,
+  cols: number,
+  rows: number,
+): Promise<void> {
+  return invoke("terminal_resize", { session, cols, rows });
+}
+
+export function terminalClose(session: number): Promise<void> {
+  return invoke("terminal_close", { session });
+}
+
+/** Commands previously typed in shells on this host, oldest first. */
+export function terminalHistory(hostId: string): Promise<string[]> {
+  return invoke("terminal_history", { hostId });
+}
+
 // --- Services ---
 
 export function listServices(): Promise<ServiceInfo[]> {

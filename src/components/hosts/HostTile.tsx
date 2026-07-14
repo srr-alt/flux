@@ -1,4 +1,4 @@
-import { HardDrive, Trash2 } from "lucide-react";
+import { HardDrive, TerminalSquare, Trash2 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Sparkline } from "../charts/Sparkline";
 import { Meter } from "../charts/Meter";
@@ -15,6 +15,8 @@ interface HostTileProps {
   systemInfo: SystemInfo | null;
   series: HostSeries;
   onOpen: () => void;
+  /** Terminal drop-in — shown when the host can take a shell. */
+  onShell?: () => void;
   onRemove?: () => void;
   /** Shown while connected agentless: upgrade to full-detail agent. */
   onDeployAgent?: () => void;
@@ -63,6 +65,7 @@ export function HostTile({
   systemInfo,
   series,
   onOpen,
+  onShell,
   onRemove,
   onDeployAgent,
   onInstallDeb,
@@ -189,10 +192,23 @@ export function HostTile({
           {busyText}
         </div>
       ) : (
-        !isLocal &&
-        status?.state === "connected" && (
+        (isLocal || status?.state === "connected") && (
           <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-            {status.mode === "agentless" && onDeployAgent && (
+            {onShell && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-white/5"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShell();
+                }}
+                title="Open a shell on this machine (Ctrl+`)"
+              >
+                <TerminalSquare size={12} /> Shell
+              </Button>
+            )}
+            {!isLocal && status?.state === "connected" && status.mode === "agentless" && onDeployAgent && (
               <Button
                 variant="soft"
                 size="sm"

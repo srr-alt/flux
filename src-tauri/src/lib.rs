@@ -7,10 +7,12 @@ mod commands_monitor;
 pub mod history;
 mod commands_process;
 mod commands_settings;
+mod commands_terminal;
 mod modules;
 mod monitor;
 pub mod remote;
 pub mod state;
+pub mod terminal;
 pub mod tray;
 
 use std::io::Write;
@@ -68,6 +70,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(AppState::new())
         .manage(modules::docker_shell::ShellSessions::default())
+        .manage(terminal::TerminalSessions::default())
         .invoke_handler(tauri::generate_handler![
             commands_monitor::get_system_info,
             commands_monitor::get_initial_snapshot,
@@ -116,6 +119,11 @@ pub fn run() {
             commands_modules::docker_shell_write,
             commands_modules::docker_shell_resize,
             commands_modules::docker_shell_close,
+            commands_terminal::terminal_open,
+            commands_terminal::terminal_write,
+            commands_terminal::terminal_resize,
+            commands_terminal::terminal_close,
+            commands_terminal::terminal_history,
             commands_alerts::alerts_list_rules,
             commands_alerts::alerts_save_rule,
             commands_alerts::alerts_delete_rule,

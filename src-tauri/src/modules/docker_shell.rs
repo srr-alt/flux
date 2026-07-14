@@ -29,14 +29,14 @@ struct ShellOutput {
 /// other control chars are dropped rather than recorded wrong (arrow-recalled
 /// commands are already in history; full-screen apps like vim emit garbage).
 #[derive(Default)]
-struct LineCapture {
+pub(crate) struct LineCapture {
     buf: Vec<u8>,
     tainted: bool,
 }
 
 impl LineCapture {
     /// Feed raw input bytes; returns any completed command lines.
-    fn feed(&mut self, data: &[u8]) -> Vec<String> {
+    pub(crate) fn feed(&mut self, data: &[u8]) -> Vec<String> {
         let mut done = Vec::new();
         for &b in data {
             match b {
