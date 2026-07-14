@@ -4,12 +4,16 @@ import { ScreenHeader } from "../components/layout/ScreenHeader";
 import type { PageId } from "../config/navigation";
 import { formatKb } from "../lib/format";
 import {
+  alertsActive,
+  alertsListRules,
   getUsageLogStatus,
   listPackages,
   listServices,
   listStartupApps,
 } from "../lib/tauri";
+import { useLockStore } from "../state/lockStore";
 import { useMonitorStore } from "../state/monitorStore";
+import { Alerts } from "./Alerts";
 import { Cleaner } from "./Cleaner";
 import { HardwareInfo } from "./HardwareInfo";
 import { Services } from "./Services";
@@ -17,6 +21,7 @@ import { Startup } from "./Startup";
 import { Uninstaller } from "./Uninstaller";
 
 const TOOLS: { id: string; label: string; Component: ComponentType }[] = [
+  { id: "alerts", label: "Alerts", Component: Alerts },
   { id: "services", label: "Services", Component: Services },
   { id: "startup", label: "Startup apps", Component: Startup },
   { id: "cleaner", label: "Cleaner", Component: Cleaner },
@@ -29,6 +34,7 @@ interface ToolStats {
   startupEnabled?: number;
   packages?: number;
   logging?: { active: boolean; rows: number };
+  alerts?: { rules: number; enabled: number; firing: number };
 }
 
 function ToolCard({
@@ -67,6 +73,12 @@ export function Tools({ onNavigate }: { onNavigate?: (page: PageId) => void }) {
   const [active, setActive] = useState<string | null>(null);
   const [stats, setStats] = useState<ToolStats>({});
   const systemInfo = useMonitorStore((s) => s.systemInfo);
+  // Alerts hides under the privacy lock: rules and firings name remote
+  // machines. Bounce out if the lock engages while it's open.
+  const locked = useLockStore((s) => s.locked);
+  useEffect(() => {
+    if (locked && active === "alerts") setActive(null);
+  }, [locked, active]);
 
   // Card stat lines — each source is cheap (no cleaner scan) and optional.
   useEffect(() => {
@@ -98,6 +110,19 @@ export function Tools({ onNavigate }: { onNavigate?: (page: PageId) => void }) {
     getUsageLogStatus()
       .then((st) => {
         if (!gone) setStats((s) => ({ ...s, logging: { active: st.active, rows: st.rows } }));
+      })
+      .catch(() => {});
+    Promise.all([alertsListRules(), alertsActive()])
+      .then(([rules, firing]) => {
+        if (!gone)
+          setStats((s) => ({
+            ...s,
+            alerts: {
+              rules: rules.length,
+              enabled: rules.filter((r) => r.enabled).length,
+              firing: firing.length,
+            },
+          }));
       })
       .catch(() => {});
     return () => {
@@ -134,6 +159,32 @@ export function Tools({ onNavigate }: { onNavigate?: (page: PageId) => void }) {
       <ScreenHeader title="Tools" sub="this machine" />
       <div className="flex flex-col gap-4 p-5">
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+          {!locked && (
+            <ToolCard
+              icon="🔔"
+              title="Alerts"
+              desc="Threshold rules, desktop notifications, tray health."
+              stat={
+                stats.alerts
+                  ? stats.alerts.firing > 0
+                    ? `${stats.alerts.firing} firing`
+                    : stats.alerts.enabled > 0
+                      ? `${stats.alerts.enabled} enabled · watching`
+                      : stats.alerts.rules > 0
+                        ? `${stats.alerts.rules} rules · all off`
+                        : "no rules yet"
+                  : "…"
+              }
+              statClass={
+                stats.alerts && stats.alerts.firing > 0
+                  ? "text-status-critical"
+                  : stats.alerts && stats.alerts.enabled > 0
+                    ? "text-status-good"
+                    : "text-ink-muted"
+              }
+              onClick={() => setActive("alerts")}
+            />
+          )}
           <ToolCard
             icon="⚙"
             title="Services"

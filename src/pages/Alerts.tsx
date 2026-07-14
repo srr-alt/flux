@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Bell, BellRing, Pencil, Plus, Trash2 } from "lucide-react";
-import { ScreenHeader } from "../components/layout/ScreenHeader";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -296,17 +295,18 @@ export function Alerts() {
 
   return (
     <div className="flex h-full flex-col">
-      <ScreenHeader
-        title="Alerts"
-        sub={
-          active.length > 0
-            ? `${active.length} firing`
-            : rules?.some((r) => r.enabled)
-              ? "watching"
-              : "no rules enabled"
-        }
-        actions={
-          <>
+      {/* Rendered inside the Tools shell (its ScreenHeader is above), so
+          the page carries its own toolbar row instead of a ScreenHeader. */}
+      <div className="flex flex-col gap-4 p-6">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[11px] text-ink-faint">
+            {active.length > 0
+              ? `${active.length} firing`
+              : rules?.some((r) => r.enabled)
+                ? "watching"
+                : "no rules enabled"}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={testNotification}>
               {testState === "idle" && "Test notification"}
               {testState === "sent" && "Sent ✓"}
@@ -319,11 +319,8 @@ export function Alerts() {
             >
               <Plus size={14} /> Add rule
             </Button>
-          </>
-        }
-      />
-
-      <div className="flex flex-col gap-4 p-6">
+          </div>
+        </div>
         {/* Firing now */}
         {active.length > 0 && (
           <div className="glass rounded-2xl border border-status-critical/40 p-4">

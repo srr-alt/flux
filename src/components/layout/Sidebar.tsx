@@ -16,10 +16,7 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
   const hostCount = useHostsStore((s) => s.hosts.length) + 1;
   const containerCount = useDockerStore((s) => Object.keys(s.latest).length);
   const locked = useLockStore((s) => s.locked);
-  // Alerts hides with Fleet: rules and firings name remote machines.
-  const items = NAVIGATION.filter(
-    (n) => !(locked && (n.id === "fleet" || n.id === "alerts")),
-  );
+  const items = NAVIGATION.filter((n) => !(locked && n.id === "fleet"));
   // Faint counts next to nav labels (design: Fleet 5, Docker 7).
   const badges: Partial<Record<PageId, number>> = {
     fleet: hostCount,
