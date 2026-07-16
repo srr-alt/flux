@@ -8,17 +8,17 @@ Local HTTP API reference: [docs/API.md](docs/API.md).
 
 | Repo | Visibility | Purpose |
 |------|-----------|---------|
-| [ydvsahil03/vantage](https://github.com/ydvsahil03/vantage) | private | Source code (app still named Flux; repo/dir kept the old Vantage name) |
-| [ydvsahil03/flux-apt](https://github.com/ydvsahil03/flux-apt) | public | apt repository served via GitHub Pages |
+| [srr-alt/flux](https://github.com/srr-alt/flux) | private | Source code (app still named Flux; repo/dir kept the old Vantage name) |
+| [srr-alt/flux-apt](https://github.com/srr-alt/flux-apt) | public | apt repository served via GitHub Pages |
 
 - Default branch: `main` on both.
 - `flux-apt` history is disposable — every deploy force-pushes a full snapshot.
 
 ## URLs
 
-- Releases: https://github.com/ydvsahil03/vantage/releases
-- apt repo (GitHub Pages): https://ydvsahil03.github.io/flux-apt/
-- Signing pubkey: https://ydvsahil03.github.io/flux-apt/pubkey.gpg
+- Releases: https://github.com/srr-alt/flux/releases
+- apt repo (GitHub Pages): https://srr-alt.github.io/flux-apt/
+- Signing pubkey: https://srr-alt.github.io/flux-apt/pubkey.gpg
 
 ## Releases & version control
 
@@ -62,7 +62,7 @@ group membership.
 
 ### GPG signing
 
-- Key: "Flux Package Signing" <ydvsahil0003@gmail.com>
+- Key: "Flux Package Signing" <304099140+srr-alt@users.noreply.github.com>
 - Fingerprint: `703C D0EB 7F08 8E1C B4E6 1178 A3BF BD72 454C 3F61`
 - Private keyring: `packaging/apt-repo/gnupg/` — **gitignored, never commit;
   no passphrase; back it up manually**. Losing it means re-keying every user.
@@ -73,8 +73,8 @@ group membership.
 
 ```bash
 sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://ydvsahil03.github.io/flux-apt/pubkey.gpg | sudo gpg --dearmor --yes -o /etc/apt/keyrings/flux.gpg
-echo "deb [signed-by=/etc/apt/keyrings/flux.gpg] https://ydvsahil03.github.io/flux-apt $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/flux.list
+curl -fsSL https://srr-alt.github.io/flux-apt/pubkey.gpg | sudo gpg --dearmor --yes -o /etc/apt/keyrings/flux.gpg
+echo "deb [signed-by=/etc/apt/keyrings/flux.gpg] https://srr-alt.github.io/flux-apt $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/flux.list
 sudo apt update && sudo apt install flux
 ```
 
@@ -82,16 +82,16 @@ Updates arrive via normal `apt upgrade`.
 
 ## Accounts / tooling
 
-- GitHub account: `ydvsahil03`; git identity `ydvsahil03 <ydvsahil0003@gmail.com>`.
+- GitHub account: `srr-alt`; git identity `srr-alt <304099140+srr-alt@users.noreply.github.com>`.
 - `gh` CLI 2.4.0 (old: no `--git-protocol`; nested API fields need
   `--input -` with raw JSON, e.g. the Pages-enable call in deploy.sh).
 - Pages was enabled once via:
-  `echo '{"source":{"branch":"main","path":"/"}}' | gh api repos/ydvsahil03/flux-apt/pages --input -`
+  `echo '{"source":{"branch":"main","path":"/"}}' | gh api repos/srr-alt/flux-apt/pages --input -`
 
 ## Troubleshooting
 
 - **apt 404 / "does not have a Release file"**: Pages not deployed or still
-  building — check https://ydvsahil03.github.io/flux-apt/pubkey.gpg returns 200.
+  building — check https://srr-alt.github.io/flux-apt/pubkey.gpg returns 200.
 - **"no valid OpenPGP data"** during install: the curl above 404'd and wrote a
   garbage keyring; re-run the key step once Pages is live.
 - **reprepro "already has" warnings** on rebuild: harmless — same version

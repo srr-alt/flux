@@ -104,7 +104,7 @@ pub fn deploy_agent(
     result
 }
 
-const APT_REPO_URL: &str = "https://ydvsahil03.github.io/flux-apt";
+const APT_REPO_URL: &str = "https://srr-alt.github.io/flux-apt";
 const SUPPORTED_CODENAMES: &[&str] = &["jammy", "noble", "resolute"];
 
 /// Install the Flux .deb on the remote via the hosted apt repo.

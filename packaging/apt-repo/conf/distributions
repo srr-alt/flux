@@ -4,7 +4,7 @@ Codename: jammy
 Architectures: amd64
 Components: main
 Description: Flux apt repository (Ubuntu 22.04)
-SignWith: 703CD0EB7F088E1CB4E61178A3BFBD72454C3F61
+SignWith: AF9AB0861EFBE0F77EE193960D27A9FA345FD3FB
 
 Origin: Flux
 Label: Flux
@@ -12,7 +12,7 @@ Codename: noble
 Architectures: amd64
 Components: main
 Description: Flux apt repository (Ubuntu 24.04)
-SignWith: 703CD0EB7F088E1CB4E61178A3BFBD72454C3F61
+SignWith: AF9AB0861EFBE0F77EE193960D27A9FA345FD3FB
 
 Origin: Flux
 Label: Flux
@@ -20,4 +20,4 @@ Codename: resolute
 Architectures: amd64
 Components: main
 Description: Flux apt repository (Ubuntu 26.04)
-SignWith: 703CD0EB7F088E1CB4E61178A3BFBD72454C3F61
+SignWith: AF9AB0861EFBE0F77EE193960D27A9FA345FD3FB

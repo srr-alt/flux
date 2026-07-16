@@ -19,7 +19,7 @@ gpg --homedir "$GNUPGHOME" --batch --gen-key <<'EOF'
 Key-Type: RSA
 Key-Length: 4096
 Name-Real: Flux Package Signing
-Name-Email: ydvsahil0003@gmail.com
+Name-Email: 304099140+srr-alt@users.noreply.github.com
 Expire-Date: 0
 %commit
 EOF

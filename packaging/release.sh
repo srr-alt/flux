@@ -52,9 +52,9 @@ cp packaging/dist/jammy/flux-agent packaging/dist/flux-agent-linux-amd64
 gh release create "v$VERSION" "${DEBS[@]}" packaging/dist/flux-agent-linux-amd64 \
   -t "Flux v$VERSION" \
   -n "Flux v$VERSION — .deb packages for Ubuntu 22.04 (jammy), 24.04 (noble), 26.04 (resolute).
-Prefer the apt repo for automatic updates: https://ydvsahil03.github.io/flux-apt/"
+Prefer the apt repo for automatic updates: https://srr-alt.github.io/flux-apt/"
 
-if gh repo view ydvsahil03/flux-apt >/dev/null 2>&1; then
+if gh repo view srr-alt/flux-apt >/dev/null 2>&1; then
   echo "=== deploy apt repo to GitHub Pages ==="
   bash packaging/apt-repo/deploy.sh
 else

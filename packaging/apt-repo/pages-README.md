@@ -1,6 +1,6 @@
 # Flux apt repository
 
-Signed apt repository for [Flux](https://github.com/ydvsahil03/vantage) — a modern Linux system monitor and optimizer (Stacer replacement) built with Tauri.
+Signed apt repository for [Flux](https://github.com/srr-alt/flux) — a modern Linux system monitor and optimizer (Stacer replacement) built with Tauri.
 
 Supported Ubuntu releases: **22.04 (jammy)**, **24.04 (noble)**, **26.04 (resolute)**.
 
@@ -9,7 +9,7 @@ Supported Ubuntu releases: **22.04 (jammy)**, **24.04 (noble)**, **26.04 (resolu
 One command — registers the key + repo and installs Flux:
 
 ```bash
-curl -fsSL https://ydvsahil03.github.io/flux-apt/setup.sh | sudo bash
+curl -fsSL https://srr-alt.github.io/flux-apt/setup.sh | sudo bash
 ```
 
 <details>
@@ -18,11 +18,11 @@ curl -fsSL https://ydvsahil03.github.io/flux-apt/setup.sh | sudo bash
 ```bash
 # 1. Import the signing key
 sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://ydvsahil03.github.io/flux-apt/pubkey.gpg \
+curl -fsSL https://srr-alt.github.io/flux-apt/pubkey.gpg \
   | sudo gpg --dearmor -o /etc/apt/keyrings/flux.gpg
 
 # 2. Add the repository (uses your Ubuntu codename automatically)
-echo "deb [signed-by=/etc/apt/keyrings/flux.gpg] https://ydvsahil03.github.io/flux-apt $(lsb_release -cs) main" \
+echo "deb [signed-by=/etc/apt/keyrings/flux.gpg] https://srr-alt.github.io/flux-apt $(lsb_release -cs) main" \
   | sudo tee /etc/apt/sources.list.d/flux.list
 
 # 3. Install

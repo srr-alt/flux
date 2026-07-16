@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Flux apt setup — one command install:
-#   curl -fsSL https://ydvsahil03.github.io/flux-apt/setup.sh | sudo bash
+#   curl -fsSL https://srr-alt.github.io/flux-apt/setup.sh | sudo bash
 #
 # Installs the repo signing key to /etc/apt/keyrings, registers the apt
 # source for your Ubuntu release, and installs Flux. Updates then arrive
 # through normal `apt upgrade`.
 set -euo pipefail
 
-REPO_URL="https://ydvsahil03.github.io/flux-apt"
+REPO_URL="https://srr-alt.github.io/flux-apt"
 SUPPORTED="jammy noble resolute"
 
 if [[ $(id -u) -ne 0 ]]; then
