@@ -2,6 +2,7 @@ import { Plus, TerminalSquare } from "lucide-react";
 import { ScreenHeader } from "../components/layout/ScreenHeader";
 import { useEffect, useMemo, useState } from "react";
 import { AddHostWizard } from "../components/hosts/AddHostWizard";
+import { FleetProcessTable } from "../components/hosts/FleetProcessTable";
 import { HostTile } from "../components/hosts/HostTile";
 import { InstallDebModal } from "../components/hosts/InstallDebModal";
 import { Button } from "../components/ui/Button";
@@ -117,6 +118,15 @@ export function Fleet({ onNavigate }: FleetProps) {
     setSelected(hostId);
     onNavigate?.("performance");
   };
+
+  const openProcesses = (hostId: string) => {
+    setSelected(hostId);
+    onNavigate?.("processes");
+  };
+
+  const connectedRemotes = hosts
+    .filter((h) => statuses[h.id]?.state === "connected")
+    .map((h) => ({ id: h.id, name: h.name }));
 
   const localSeries: HostSeries = {
     ...emptySeries(),
@@ -258,6 +268,14 @@ export function Fleet({ onNavigate }: FleetProps) {
             }
           />
         )}
+      </div>
+
+      <div className="mt-4">
+        <FleetProcessTable
+          remotes={connectedRemotes}
+          localName={localInfo?.hostname ?? "This machine"}
+          onOpenHost={openProcesses}
+        />
       </div>
 
       {hosts.length > 0 && (
