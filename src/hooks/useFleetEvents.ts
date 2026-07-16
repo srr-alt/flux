@@ -4,6 +4,7 @@ import {
   getHostStatuses,
   listHosts,
   onHostStatus,
+  onProxmoxGuests,
   onRemoteDisks,
   onRemoteTick,
 } from "../lib/tauri";
@@ -55,6 +56,11 @@ export function useFleetEvents() {
         }),
         onRemoteDisks((event) => {
           useFleetStore.getState().pushDisks(event.host_id, event.snapshot);
+        }),
+        onProxmoxGuests((event) => {
+          useFleetStore
+            .getState()
+            .setProxmoxGuests(event.host_id, event.snapshot);
         }),
       ]);
       if (cancelled) {

@@ -1,11 +1,20 @@
-import { HardDrive, Power, RotateCcw, TerminalSquare, Trash2, Zap } from "lucide-react";
+import {
+  HardDrive,
+  Play,
+  Power,
+  RotateCcw,
+  Square,
+  TerminalSquare,
+  Trash2,
+  Zap,
+} from "lucide-react";
 import { Button } from "../ui/Button";
 import { Sparkline } from "../charts/Sparkline";
 import { Meter } from "../charts/Meter";
-import { formatBytesPerSec, formatUptime } from "../../lib/format";
+import { formatBytes, formatBytesPerSec, formatUptime } from "../../lib/format";
 import { chartColors, themeColor } from "../../lib/theme";
 import type { HostSeries } from "../../state/fleetStore";
-import type { HostStatus } from "../../types/hosts";
+import type { HostStatus, ProxmoxAction, ProxmoxGuest } from "../../types/hosts";
 import type { SystemInfo } from "../../types/monitor";
 
 interface HostTileProps {
@@ -27,6 +36,93 @@ interface HostTileProps {
   onDeployAgent?: () => void;
   onInstallDeb?: () => void;
   busyText?: string;
+  /** Proxmox guests — present only when the host is a PVE node. */
+  guests?: ProxmoxGuest[];
+  /** Guest power actions (confirm for shutdown/stop handled by parent). */
+  onGuestAction?: (guest: ProxmoxGuest, action: ProxmoxAction) => void;
+}
+
+/** Sub-row for one Proxmox VM/LXC: state dot, name, live stats, actions. */
+function GuestRow({
+  guest,
+  onAction,
+}: {
+  guest: ProxmoxGuest;
+  onAction?: (guest: ProxmoxGuest, action: ProxmoxAction) => void;
+}) {
+  const running = guest.status === "running";
+  const dot = running
+    ? "bg-status-good"
+    : guest.status === "stopped"
+      ? "bg-ink-faint/40"
+      : "bg-status-warning";
+  return (
+    <div className="group/guest flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-white/[0.04]">
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+      <span
+        className="min-w-0 truncate text-[11px] text-ink-secondary"
+        title={`${guest.name || guest.vmid} · ${guest.status}`}
+      >
+        {guest.name || String(guest.vmid)}
+      </span>
+      <span className="shrink-0 rounded border border-border px-1 text-[8.5px] font-semibold uppercase tracking-wider text-ink-faint">
+        {guest.kind === "qemu" ? "VM" : "CT"}
+      </span>
+      <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums text-ink-faint">
+        {running
+          ? [
+              guest.cpu_pct !== null ? `${guest.cpu_pct.toFixed(0)}%` : null,
+              guest.mem_bytes !== null ? formatBytes(guest.mem_bytes) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || "running"
+          : guest.status}
+      </span>
+      {onAction && (
+        <span className="hidden shrink-0 gap-0.5 group-hover/guest:flex">
+          {!running && (
+            <button
+              className="rounded p-0.5 text-status-good hover:bg-status-good/15"
+              aria-label={`Start ${guest.name || guest.vmid}`}
+              title="Start"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAction(guest, "start");
+              }}
+            >
+              <Play size={11} />
+            </button>
+          )}
+          {running && (
+            <>
+              <button
+                className="rounded p-0.5 text-ink-muted hover:bg-white/10 hover:text-ink-primary"
+                aria-label={`Shut down ${guest.name || guest.vmid}`}
+                title="Graceful shutdown (asks first)"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction(guest, "shutdown");
+                }}
+              >
+                <Power size={11} />
+              </button>
+              <button
+                className="rounded p-0.5 text-status-critical/80 hover:bg-status-critical/15 hover:text-status-critical"
+                aria-label={`Stop ${guest.name || guest.vmid}`}
+                title="Hard stop (asks first)"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction(guest, "stop");
+                }}
+              >
+                <Square size={11} />
+              </button>
+            </>
+          )}
+        </span>
+      )}
+    </div>
+  );
 }
 
 /** Design tile chrome: faint MODE tag + colored STATUS word (no pill fill). */
@@ -78,6 +174,8 @@ export function HostTile({
   onDeployAgent,
   onInstallDeb,
   busyText,
+  guests,
+  onGuestAction,
 }: HostTileProps) {
   const latest = series.latest;
   const memUsedKb = latest
@@ -192,6 +290,28 @@ export function HostTile({
             : "—"}
         </span>
       </div>
+
+      {/* proxmox guests */}
+      {guests && guests.length > 0 && (
+        <div className="rounded-xl border border-border/60 bg-black/15 p-1.5">
+          <div className="mb-0.5 flex items-baseline justify-between px-1.5 text-[9px] font-semibold uppercase tracking-wider text-ink-faint">
+            <span>Proxmox guests</span>
+            <span className="tabular-nums">
+              {guests.filter((g) => g.status === "running").length}/
+              {guests.length} running
+            </span>
+          </div>
+          <div className="flex max-h-36 flex-col overflow-y-auto">
+            {guests.map((g) => (
+              <GuestRow
+                key={`${g.kind}-${g.vmid}`}
+                guest={g}
+                onAction={onGuestAction}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* actions */}
       {busyText ? (

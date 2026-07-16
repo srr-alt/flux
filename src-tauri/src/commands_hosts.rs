@@ -188,6 +188,33 @@ pub async fn host_power(app: AppHandle, host_id: HostId, verb: String) -> Result
     .map_err(|e| e.to_string())?
 }
 
+/// start / shutdown / stop a Proxmox guest (kind + action allowlisted in
+/// proxmox.rs). Dedicated SSH session — shutdown can block for a while.
+#[tauri::command]
+pub async fn proxmox_guest_action(
+    app: AppHandle,
+    host_id: HostId,
+    vmid: u64,
+    kind: String,
+    action: String,
+) -> Result<(), String> {
+    let config = app
+        .state::<AppState>()
+        .hosts
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|h| h.id == host_id)
+        .cloned()
+        .ok_or("unknown host")?;
+    let known_hosts = known_hosts_path(&app);
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::remote::proxmox::guest_action(&config, &known_hosts, vmid, &kind, &action)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn list_hosts(state: State<'_, AppState>) -> Vec<HostView> {
     views(&state)

@@ -149,6 +149,7 @@ pub fn run() {
             commands_hosts::forget_host_key,
             commands_hosts::wake_host,
             commands_hosts::host_power,
+            commands_hosts::proxmox_guest_action,
         ])
         .setup(|app| {
             // History recorder: best-effort, app runs fine without it.

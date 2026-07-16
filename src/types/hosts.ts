@@ -35,6 +35,20 @@ export interface TestResult {
   kernel: string;
 }
 
+/** One Proxmox VM or LXC container (backend remote/proxmox.rs). */
+export interface ProxmoxGuest {
+  vmid: number;
+  name: string;
+  kind: "qemu" | "lxc";
+  status: string;
+  cpu_pct: number | null;
+  mem_bytes: number | null;
+  max_mem_bytes: number | null;
+  uptime_secs: number | null;
+}
+
+export type ProxmoxAction = "start" | "shutdown" | "stop";
+
 export interface DeployProgress {
   host_id: string;
   step: string;

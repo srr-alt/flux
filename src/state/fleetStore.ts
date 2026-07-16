@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ProxmoxGuest } from "../types/hosts";
 import type { DiskSnapshot, TickSnapshot } from "../types/monitor";
 import { push, type SeriesMap } from "./history";
 
@@ -33,13 +34,21 @@ export function emptySeries(): HostSeries {
 
 interface FleetState {
   byHost: Record<string, HostSeries>;
+  /** Proxmox guests per host; key present = host is a PVE node. */
+  proxmoxByHost: Record<string, ProxmoxGuest[]>;
   pushTick: (hostId: string, snapshot: TickSnapshot) => void;
   pushDisks: (hostId: string, snapshot: DiskSnapshot) => void;
+  setProxmoxGuests: (hostId: string, guests: ProxmoxGuest[]) => void;
   dropHost: (hostId: string) => void;
 }
 
 export const useFleetStore = create<FleetState>((set) => ({
   byHost: {},
+  proxmoxByHost: {},
+  setProxmoxGuests: (hostId, guests) =>
+    set((state) => ({
+      proxmoxByHost: { ...state.proxmoxByHost, [hostId]: guests },
+    })),
   pushTick: (hostId, snapshot) =>
     set((state) => {
       const prev = state.byHost[hostId] ?? emptySeries();
@@ -97,7 +106,9 @@ export const useFleetStore = create<FleetState>((set) => ({
   dropHost: (hostId) =>
     set((state) => {
       const byHost = { ...state.byHost };
+      const proxmoxByHost = { ...state.proxmoxByHost };
       delete byHost[hostId];
-      return { byHost };
+      delete proxmoxByHost[hostId];
+      return { byHost, proxmoxByHost };
     }),
 }));

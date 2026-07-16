@@ -4,6 +4,7 @@ pub mod deploy;
 pub mod hosts;
 pub mod poller;
 pub mod power;
+pub mod proxmox;
 pub mod session;
 
 use serde::Serialize;
@@ -72,4 +73,5 @@ pub fn publish_status(
 pub const EVENT_HOST_STATUS: &str = "hosts://status";
 pub const EVENT_REMOTE_TICK: &str = "monitor://remote-tick";
 pub const EVENT_REMOTE_DISKS: &str = "monitor://remote-disks";
+pub const EVENT_PROXMOX: &str = "monitor://proxmox";
 pub const EVENT_DEPLOY_PROGRESS: &str = "deploy://progress";

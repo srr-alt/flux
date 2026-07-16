@@ -9,13 +9,18 @@ import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Modal } from "../components/ui/Modal";
 import type { PageId } from "../config/navigation";
-import type { DeployProgress } from "../types/hosts";
+import type {
+  DeployProgress,
+  ProxmoxAction,
+  ProxmoxGuest,
+} from "../types/hosts";
 import { formatBytesPerSec, formatKb } from "../lib/format";
 import {
   deployAgent,
   hostPower,
   listHosts,
   onDeployProgress,
+  proxmoxGuestAction,
   removeHost,
   wakeHost,
 } from "../lib/tauri";
@@ -58,6 +63,7 @@ export function Fleet({ onNavigate }: FleetProps) {
   const systemInfos = useHostsStore((s) => s.systemInfos);
   const setSelected = useHostsStore((s) => s.setSelected);
   const byHost = useFleetStore((s) => s.byHost);
+  const proxmoxByHost = useFleetStore((s) => s.proxmoxByHost);
   const localInfo = useMonitorStore((s) => s.systemInfo);
   const localLatest = useMonitorStore((s) => s.latest);
   const localDisks = useMonitorStore((s) => s.disks);
@@ -74,6 +80,14 @@ export function Fleet({ onNavigate }: FleetProps) {
   } | null>(null);
   const [powerBusy, setPowerBusy] = useState(false);
   const [powerError, setPowerError] = useState<string | null>(null);
+  // Proxmox guest shutdown/stop confirm (start fires without asking).
+  const [guestTarget, setGuestTarget] = useState<{
+    hostId: string;
+    guest: ProxmoxGuest;
+    action: "shutdown" | "stop";
+  } | null>(null);
+  const [guestBusy, setGuestBusy] = useState(false);
+  const [guestError, setGuestError] = useState<string | null>(null);
   // Wake feedback: keep "Waking…" up long enough for the machine to boot
   // and the poller to reconnect.
   const [waking, setWaking] = useState<Record<string, boolean>>({});
@@ -85,6 +99,30 @@ export function Fleet({ onNavigate }: FleetProps) {
       () => setWaking((w) => ({ ...w, [hostId]: false })),
       45_000,
     );
+  };
+
+  const guestAction = (hostId: string, guest: ProxmoxGuest, action: ProxmoxAction) => {
+    if (action === "start") {
+      proxmoxGuestAction(hostId, guest.vmid, guest.kind, "start").catch(() => {});
+      return;
+    }
+    setGuestError(null);
+    setGuestTarget({ hostId, guest, action });
+  };
+
+  const confirmGuestAction = () => {
+    if (!guestTarget) return;
+    setGuestBusy(true);
+    setGuestError(null);
+    proxmoxGuestAction(
+      guestTarget.hostId,
+      guestTarget.guest.vmid,
+      guestTarget.guest.kind,
+      guestTarget.action,
+    )
+      .then(() => setGuestTarget(null))
+      .catch((e) => setGuestError(String(e)))
+      .finally(() => setGuestBusy(false));
   };
 
   const confirmPower = () => {
@@ -228,6 +266,12 @@ export function Fleet({ onNavigate }: FleetProps) {
             onShell={() => useTerminalStore.getState().open(host.id)}
             onWake={host.mac ? () => wake(host.id) : undefined}
             wakePending={!!waking[host.id]}
+            guests={
+              statuses[host.id]?.state === "connected"
+                ? proxmoxByHost[host.id]
+                : undefined
+            }
+            onGuestAction={(guest, action) => guestAction(host.id, guest, action)}
             onPower={(verb) =>
               setPowerTarget({ id: host.id, name: host.name, verb })
             }
@@ -316,6 +360,39 @@ export function Fleet({ onNavigate }: FleetProps) {
               </Button>
               <Button variant="danger" loading={powerBusy} onClick={confirmPower}>
                 {powerTarget.verb === "reboot" ? "Reboot" : "Shut down"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {guestTarget && (
+        <Modal
+          onClose={() => setGuestTarget(null)}
+          title={
+            guestTarget.action === "shutdown"
+              ? `Shut down ${guestTarget.guest.name || guestTarget.guest.vmid}?`
+              : `Stop ${guestTarget.guest.name || guestTarget.guest.vmid}?`
+          }
+        >
+          <div className="flex w-96 max-w-full flex-col gap-4">
+            <p className="text-sm text-ink-secondary">
+              {guestTarget.action === "shutdown"
+                ? `The ${guestTarget.guest.kind === "qemu" ? "VM" : "container"} shuts down gracefully via its guest OS — this can take a while.`
+                : `Hard stop: the ${guestTarget.guest.kind === "qemu" ? "VM is killed like a pulled power cord" : "container is killed immediately"} — unsaved data inside is lost.`}
+            </p>
+            {guestError && (
+              <p className="text-xs text-status-critical">{guestError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setGuestTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                loading={guestBusy}
+                onClick={confirmGuestAction}
+              >
+                {guestTarget.action === "shutdown" ? "Shut down" : "Stop"}
               </Button>
             </div>
           </div>

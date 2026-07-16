@@ -417,6 +417,7 @@ export const HOST_EVENTS = {
   REMOTE_TICK: "monitor://remote-tick",
   REMOTE_DISKS: "monitor://remote-disks",
   DEPLOY_PROGRESS: "deploy://progress",
+  PROXMOX: "monitor://proxmox",
 } as const;
 
 export interface HostStatusEvent {
@@ -537,4 +538,25 @@ export function onRemoteDisks(
   return listen<RemoteEvent<DiskSnapshot>>(HOST_EVENTS.REMOTE_DISKS, (e) =>
     callback(e.payload),
   );
+}
+
+export function onProxmoxGuests(
+  callback: (
+    event: RemoteEvent<import("../types/hosts").ProxmoxGuest[]>,
+  ) => void,
+): Promise<UnlistenFn> {
+  return listen<RemoteEvent<import("../types/hosts").ProxmoxGuest[]>>(
+    HOST_EVENTS.PROXMOX,
+    (e) => callback(e.payload),
+  );
+}
+
+/** start / graceful shutdown / hard stop for a Proxmox VM or container. */
+export function proxmoxGuestAction(
+  hostId: string,
+  vmid: number,
+  kind: "qemu" | "lxc",
+  action: import("../types/hosts").ProxmoxAction,
+): Promise<void> {
+  return invoke("proxmox_guest_action", { hostId, vmid, kind, action });
 }

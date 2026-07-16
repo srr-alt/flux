@@ -1,5 +1,5 @@
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -8,7 +8,10 @@ use flux_core::process::{ProcessInfo, ProcessQuery};
 use super::agentless::{self, AgentlessDeltas};
 use super::hosts::HostConfig;
 use super::session::{HostKeyStatus, SshSession};
-use super::{CollectionMode, HostStatus, RemoteEvent, EVENT_REMOTE_DISKS, EVENT_REMOTE_TICK};
+use super::{
+    proxmox, CollectionMode, HostStatus, RemoteEvent, EVENT_PROXMOX, EVENT_REMOTE_DISKS,
+    EVENT_REMOTE_TICK,
+};
 
 pub enum Control {
     Stop,
@@ -64,8 +67,10 @@ pub fn run(
         let mut deltas = AgentlessDeltas::new();
         deltas.uid_names = agentless::uid_table(&session);
 
+        let mut node_hint = String::new();
         match agentless::statics(&session) {
             Ok(info) => {
+                node_hint = info.hostname.clone();
                 super::publish_status(
                     &app,
                     &host_id,
@@ -89,8 +94,31 @@ pub fn run(
             }
         }
 
+        // Proxmox: one probe per connection, then a slow guest-list cadence
+        // independent of the metrics tick (guests change rarely; pvesh is a
+        // full CLI invocation on the node).
+        let is_pve = proxmox::detect(&session);
+        let mut last_pve_poll: Option<Instant> = None;
+        const PVE_POLL_SECS: u64 = 10;
+
         let mut consecutive_failures = 0u32;
         loop {
+            if is_pve
+                && last_pve_poll
+                    .map(|at| at.elapsed().as_secs() >= PVE_POLL_SECS)
+                    .unwrap_or(true)
+            {
+                last_pve_poll = Some(Instant::now());
+                if let Ok(guests) = proxmox::guests(&session, &node_hint) {
+                    let _ = app.emit(
+                        EVENT_PROXMOX,
+                        RemoteEvent {
+                            host_id: host_id.clone(),
+                            snapshot: guests,
+                        },
+                    );
+                }
+            }
             match agentless::poll(&session, &mut deltas) {
                 Ok(Some((tick, disks))) => {
                     consecutive_failures = 0;
