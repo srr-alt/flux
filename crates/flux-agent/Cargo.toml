@@ -1,6 +1,7 @@
 [package]
 name = "flux-agent"
 version = "0.2.2"
+license = "MIT"
 edition = "2021"
 description = "Headless Flux metrics agent: streams JSON-lines snapshots over stdout, driven via SSH"
 

@@ -296,7 +296,11 @@ pub fn add_host_blocking(
         session.remember_host_key(&known_hosts)?;
         session.auth_password(&new.username, password)?;
 
-        // Idempotent authorized_keys append.
+        // Idempotent authorized_keys append. Interpolating the pubkey into
+        // the shell line is safe only by PROVENANCE: it is ssh-keygen output
+        // Flux generated itself. If a feature ever lets users supply their
+        // own key material, this line becomes a shell-injection sink and
+        // needs validation or a non-shell transport (SFTP) instead.
         let pubkey = public_key(app)?;
         session.exec_capture(&format!(
             "mkdir -p ~/.ssh && chmod 700 ~/.ssh && \

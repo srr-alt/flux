@@ -1,6 +1,7 @@
 {
   "name": "flux",
   "private": true,
+  "license": "MIT",
   "version": "0.2.5",
   "type": "module",
   "scripts": {

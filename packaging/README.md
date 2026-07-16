@@ -12,18 +12,12 @@ bash packaging/build.sh jammy    # build one target only
 
 Output lands in `packaging/dist/<codename>/Flux_<version>_amd64.deb`.
 
-## Privacy lock factory default
+## Privacy lock
 
-Fresh installs start with the privacy lock **engaged** (Fleet and the
-Assistant hidden). The factory password is:
-
-```
-Admin@123#
-```
-
-Unlock in Settings → Privacy lock, then set your own password there.
-The lock is a UI privacy gate for shared screens, not a security
-boundary — the hash lives in the app's localStorage.
+The privacy lock (hides Fleet and the Assistant) ships **off** — there is
+no factory password. Users enable it in Settings → Privacy lock by
+setting their own. It is a UI privacy gate for shared screens, not a
+security boundary — the hash lives in the app's localStorage.
 
 ## Targets
 

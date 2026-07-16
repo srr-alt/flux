@@ -39,9 +39,8 @@ panels, Inter + JetBrains Mono.
 - **HTTP API** — register hosts from scripts/CI: see [docs/API.md](docs/API.md).
 - **Usage logging** — record samples to CSV for later analysis.
 - **Privacy lock** — Fleet, the Assistant and the machine picker hide behind
-  a password. Fresh installs ship locked; the factory password is
-  `Admin@123#` — unlock in Settings → Privacy lock and set your own.
-  It's a screen-privacy gate, not a security boundary.
+  a password of your choosing (off until you set one in Settings →
+  Privacy lock). It's a screen-privacy gate, not a security boundary.
 
 ## Install (Ubuntu)
 

@@ -7,20 +7,20 @@ import { create } from "zustand";
 
 const HASH_KEY = "flux.lock.hash"; // "salt:sha256hex"
 const LOCKED_KEY = "flux.lock.on";
-const SEEDED_KEY = "flux.lock.seeded";
+const SEEDED_KEY = "flux.lock.seeded"; // legacy flag from the factory-default era
 
-/** Ships locked: first run seeds the factory password "Admin@123#"
- * (documented in packaging/README.md) and engages the lock. SEEDED_KEY
- * makes this one-time — removing the password later must stick across
- * restarts. Factory default is public knowledge; users should replace it. */
-const DEFAULT_HASH =
+/** Early builds shipped locked behind a publicly documented factory
+ * password — worthless as a gate and a red flag in an audit. If this
+ * install still carries that exact hash the user never chose a password:
+ * drop it so the lock reads "not configured" until they set their own. */
+const LEGACY_DEFAULT_HASH =
   "9f2c41d8a6e05b73:db36a0a7670da4439bb9f6bc81ff0fd05917814f3fc0e9dc09154ee71f930285";
 
-if (localStorage.getItem(SEEDED_KEY) === null) {
-  localStorage.setItem(HASH_KEY, DEFAULT_HASH);
-  localStorage.setItem(LOCKED_KEY, "1");
-  localStorage.setItem(SEEDED_KEY, "1");
+if (localStorage.getItem(HASH_KEY) === LEGACY_DEFAULT_HASH) {
+  localStorage.removeItem(HASH_KEY);
+  localStorage.setItem(LOCKED_KEY, "0");
 }
+localStorage.removeItem(SEEDED_KEY);
 
 async function digest(salt: string, password: string): Promise<string> {
   const data = new TextEncoder().encode(`${salt}:${password}`);
