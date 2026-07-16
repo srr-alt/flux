@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds the .rpm inside a Rocky 9 container (oldest glibc of the RPM
-# targets — the result runs on Rocky/Alma/RHEL 9+, Fedora, openSUSE).
+# Builds the .rpm inside a Rocky 10 container (oldest glibc that still
+# has webkit2gtk-4.1 — runs on EL10, Fedora 40+, openSUSE).
 # Mirrors build.sh; Tauri's bundler produces the rpm itself, no rpmbuild.
 set -euo pipefail
 
@@ -9,7 +9,7 @@ DIST_DIR="$REPO_ROOT/packaging/dist/rpm"
 HOST_UID="$(id -u)"
 HOST_GID="$(id -g)"
 
-echo "=== rpm (rockylinux:9) ==="
+echo "=== rpm (rockylinux 10) ==="
 image_tag="vantage-builder:rpm"
 
 docker build -t "$image_tag" -f "$REPO_ROOT/packaging/Dockerfile.rpm" "$REPO_ROOT/packaging"

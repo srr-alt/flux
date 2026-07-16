@@ -1,22 +1,22 @@
-# RPM build container. Rocky 9 base: its glibc (2.34) is the oldest of the
-# RPM targets, so one binary runs on Rocky/Alma/RHEL 9+, Fedora and
-# openSUSE. webkit2gtk4.1 lives in AppStream; appindicator needs EPEL.
-FROM rockylinux:9
+# RPM build container. Rocky 10 base (glibc 2.39): the oldest floor that
+# still has webkit2gtk-4.1 — the result runs on Rocky/Alma/RHEL 10,
+# Fedora 40+, openSUSE Tumbleweed and Leap 16.
+# EL9 cannot be targeted: it only ships the webkit2gtk 4.0 API and Tauri
+# v2 hardcodes 4.1 (same wall as Ubuntu 20.04).
+FROM rockylinux/rockylinux:10
 
 RUN dnf install -y epel-release && \
     dnf config-manager --set-enabled crb && \
     dnf install -y --setopt=install_weak_deps=False \
-    gcc gcc-c++ make file rsync curl-minimal wget ca-certificates \
+    gcc gcc-c++ make file rsync wget ca-certificates \
+    pkgconf-pkg-config perl \
     openssl-devel \
     gtk3-devel \
     librsvg2-devel \
     webkit2gtk4.1-devel \
     libappindicator-gtk3-devel \
+    nodejs npm \
     && dnf clean all
-
-# Node 20 from the distro module stream.
-RUN dnf module enable -y nodejs:20 && \
-    dnf install -y nodejs npm && dnf clean all
 
 ENV RUSTUP_HOME=/opt/rustup
 ENV CARGO_HOME=/opt/cargo

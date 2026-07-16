@@ -58,7 +58,7 @@ gh release create "v$VERSION" "${DEBS[@]}" "${RPMS[@]}" packaging/dist/flux-agen
   -t "Flux v$VERSION" \
   -n "Flux v$VERSION
 - .deb: Ubuntu 22.04 (jammy) / 24.04 (noble) / 26.04 (resolute) + derivatives (Mint, Pop!_OS, Zorin, elementary); Debian 13 (trixie) + Kali/Parrot. Prefer the apt repo for automatic updates: https://srr-alt.github.io/flux-apt/
-- .rpm: Fedora, openSUSE, Rocky/Alma/RHEL 9+ (built on EL9 for widest glibc compat)
+- .rpm: Fedora 40+, openSUSE, Rocky/Alma/RHEL 10 (built on EL10; EL9 lacks webkit2gtk-4.1)
 - Arch/Manjaro/EndeavourOS/CachyOS: AUR PKGBUILD in packaging/aur/"
 
 if gh repo view srr-alt/flux-apt >/dev/null 2>&1; then

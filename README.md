@@ -48,7 +48,7 @@ panels, Inter + JetBrains Mono.
 |---|---|
 | Ubuntu 22.04/24.04/26.04, Mint, Pop!\_OS, Zorin, elementary | apt repo (below) |
 | Debian 13 "trixie", Kali, Parrot | apt repo (below) |
-| Fedora, openSUSE, Rocky/Alma/RHEL 9+ | `.rpm` from [releases](https://github.com/srr-alt/flux/releases) |
+| Fedora 40+, openSUSE, Rocky/Alma/RHEL 10 | `.rpm` from [releases](https://github.com/srr-alt/flux/releases) |
 | Arch, Manjaro, EndeavourOS, CachyOS | PKGBUILD in [`packaging/aur/`](packaging/aur/) |
 
 ### Debian/Ubuntu family — apt repo
@@ -77,11 +77,13 @@ sudo apt update && sudo apt install flux
 Download the `.rpm` from the [releases page](https://github.com/srr-alt/flux/releases), then:
 
 ```bash
-sudo dnf install ./Flux-*.rpm      # Fedora / Rocky / Alma / RHEL
+sudo dnf install ./Flux-*.rpm      # Fedora / Rocky / Alma / RHEL 10
 sudo zypper install ./Flux-*.rpm   # openSUSE
 ```
 
-Built on EL9, so it runs on anything with glibc ≥ 2.34.
+Built on EL10, so it runs on anything with glibc ≥ 2.39. RHEL/Rocky 9 is
+not supported — it ships only the webkit2gtk-4.0 API and Tauri v2 needs 4.1
+(same wall as Ubuntu 20.04).
 
 ### Arch family
 

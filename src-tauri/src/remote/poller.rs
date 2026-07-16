@@ -67,7 +67,7 @@ pub fn run(
         let mut deltas = AgentlessDeltas::new();
         deltas.uid_names = agentless::uid_table(&session);
 
-        let mut node_hint = String::new();
+        let node_hint;
         match agentless::statics(&session) {
             Ok(info) => {
                 node_hint = info.hostname.clone();
