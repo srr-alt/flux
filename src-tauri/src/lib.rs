@@ -222,8 +222,11 @@ async fn monitor_loop(app: tauri::AppHandle) {
             let _ = app.emit(EVENT_TICK, &snapshot);
         }
 
-        // Disk usage changes slowly; refresh at half cadence.
-        if tick_count % 2 == 0 {
+        // Disk usage changes slowly; refresh at half cadence, floored at
+        // 500ms — GPU sampling below spawns nvidia-smi per pass, too heavy
+        // for the sub-second tick rates.
+        let slow_every = (500 / interval_ms.max(1)).max(2);
+        if tick_count % slow_every == 0 {
             let disk_snapshot = {
                 let mut disks = state.disks.lock().unwrap();
                 disks.refresh(true);

@@ -31,8 +31,8 @@ function RefreshRateCard() {
     <div className="glass rounded-2xl border border-border p-4">
       <h2 className="mb-1 text-sm font-medium text-ink-primary">Refresh rate</h2>
       <p className="mb-3 text-xs text-ink-muted">
-        How often CPU, memory and network stats are sampled. Disk and GPU
-        update at half this rate.
+        How often CPU, memory and network stats are sampled. Disk, sensors
+        and GPU update at half this rate, but never faster than every 0.5s.
       </p>
       <SegmentedControl
         options={REFRESH_OPTIONS.map((opt) => ({ value: opt.ms, label: opt.label }))}

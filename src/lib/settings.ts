@@ -1,6 +1,8 @@
 const REFRESH_KEY = "flux.refreshMs";
 
 export const REFRESH_OPTIONS = [
+  { ms: 100, label: "0.1s" },
+  { ms: 250, label: "0.25s" },
   { ms: 500, label: "0.5s" },
   { ms: 1000, label: "1s" },
   { ms: 2000, label: "2s" },

@@ -10,7 +10,7 @@ use tauri::State;
 use crate::state::{AppState, UsageLog};
 
 /// Clamp bounds for the monitor tick interval.
-const MIN_INTERVAL_MS: u64 = 250;
+const MIN_INTERVAL_MS: u64 = 100;
 const MAX_INTERVAL_MS: u64 = 10_000;
 
 #[tauri::command]
