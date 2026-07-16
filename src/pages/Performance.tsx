@@ -746,12 +746,18 @@ function GpuDetail({ index, range }: { index: number; range: HistoryRange }) {
   const gpuTimestamps = useMonitorStore((s) => s.gpuTimestamps);
   const gpuUtil = useMonitorStore((s) => s.gpuUtil);
   const gpuTemp = useMonitorStore((s) => s.gpuTemp);
+  const gpuMemUsed = useMonitorStore((s) => s.gpuMemUsed);
+  const gpuEncode = useMonitorStore((s) => s.gpuEncode);
+  const gpuDecode = useMonitorStore((s) => s.gpuDecode);
   const history = useGpuHistory(LOCAL_HOST_ID, range, index);
   const gpu = gpus[index];
   if (!gpu) return null;
 
   const key = String(index);
   const hasUtil = gpu.utilization_pct !== null;
+  const hasMem = gpu.mem_used_mb !== null;
+  const hasCodec =
+    gpu.util_encoder_pct !== null || gpu.util_decoder_pct !== null;
 
   return (
     <div>
@@ -814,6 +820,71 @@ function GpuDetail({ index, range }: { index: number; range: HistoryRange }) {
           </>
         )}
       </div>
+      {(hasMem || hasCodec) && (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {hasMem && (
+            <div className="glass rounded-2xl border border-border p-4">
+              <h2 className="mb-2 text-sm font-medium text-ink-primary">
+                Video memory
+              </h2>
+              <AreaChart
+                timestamps={
+                  range == null ? gpuTimestamps : history.map((p) => p.ts)
+                }
+                series={[
+                  {
+                    values:
+                      range == null
+                        ? gpuMemUsed[key] ?? []
+                        : history.map((p) => p.mem_used_mb),
+                    color: COLORS.memory,
+                    label: "Used",
+                  },
+                ]}
+                yMax={gpu.mem_total_mb ?? undefined}
+                height={180}
+                formatValue={(v) => formatBytes(v * 1048576)}
+              />
+            </div>
+          )}
+          {hasCodec && (
+            <div className="glass rounded-2xl border border-border p-4">
+              <div className="mb-2 flex items-baseline justify-between">
+                <h2 className="text-sm font-medium text-ink-primary">
+                  Encode / Decode
+                </h2>
+                {range != null && (
+                  <span className="text-[11px] text-ink-muted">live only</span>
+                )}
+              </div>
+              <AreaChart
+                timestamps={gpuTimestamps}
+                series={[
+                  {
+                    values: gpuEncode[key] ?? [],
+                    color: themeColor("series2"),
+                    label: "Encode",
+                  },
+                  {
+                    values: gpuDecode[key] ?? [],
+                    color: themeColor("series4"),
+                    label: "Decode",
+                  },
+                ]}
+                yMax={100}
+                height={180}
+                formatValue={(v) => `${v.toFixed(0)}%`}
+              />
+              <Legend
+                entries={[
+                  { label: "Encode", color: themeColor("series2") },
+                  { label: "Decode", color: themeColor("series4") },
+                ]}
+              />
+            </div>
+          )}
+        </div>
+      )}
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat
           label="Utilization"
@@ -852,8 +923,34 @@ function GpuDetail({ index, range }: { index: number; range: HistoryRange }) {
           value={gpu.clock_mem_mhz !== null ? `${gpu.clock_mem_mhz} MHz` : "—"}
         />
         <Stat
+          label="Video clock"
+          value={gpu.clock_video_mhz !== null ? `${gpu.clock_video_mhz} MHz` : "—"}
+        />
+        <Stat
           label="Fan"
           value={gpu.fan_pct !== null ? formatPercent(gpu.fan_pct) : "—"}
+        />
+        <Stat
+          label="Encode"
+          value={
+            gpu.util_encoder_pct !== null
+              ? formatPercent(gpu.util_encoder_pct)
+              : "—"
+          }
+        />
+        <Stat
+          label="Decode"
+          value={
+            gpu.util_decoder_pct !== null
+              ? formatPercent(gpu.util_decoder_pct)
+              : "—"
+          }
+        />
+        <Stat
+          label="Memory bus"
+          value={
+            gpu.util_mem_pct !== null ? formatPercent(gpu.util_mem_pct) : "—"
+          }
         />
         <Stat
           label="VRAM reserved"

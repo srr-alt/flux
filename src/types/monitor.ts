@@ -110,6 +110,10 @@ export interface GpuSnapshot {
   vbios_version: string | null;
   pci_address: string | null;
   utilization_pct: number | null;
+  /** Memory controller busy percent (bandwidth, not capacity). */
+  util_mem_pct: number | null;
+  util_encoder_pct: number | null;
+  util_decoder_pct: number | null;
   mem_used_mb: number | null;
   mem_total_mb: number | null;
   mem_reserved_mb: number | null;
@@ -120,6 +124,7 @@ export interface GpuSnapshot {
   fan_pct: number | null;
   clock_core_mhz: number | null;
   clock_mem_mhz: number | null;
+  clock_video_mhz: number | null;
   pcie_link: string | null;
   note: string | null;
 }

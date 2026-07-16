@@ -13,6 +13,10 @@ pub struct GpuSnapshot {
     pub vbios_version: Option<String>,
     pub pci_address: Option<String>,
     pub utilization_pct: Option<f32>,
+    /// Memory controller busy percent (bandwidth, not capacity).
+    pub util_mem_pct: Option<f32>,
+    pub util_encoder_pct: Option<f32>,
+    pub util_decoder_pct: Option<f32>,
     pub mem_used_mb: Option<u64>,
     pub mem_total_mb: Option<u64>,
     pub mem_reserved_mb: Option<u64>,
@@ -23,6 +27,7 @@ pub struct GpuSnapshot {
     pub fan_pct: Option<f32>,
     pub clock_core_mhz: Option<u64>,
     pub clock_mem_mhz: Option<u64>,
+    pub clock_video_mhz: Option<u64>,
     /// e.g. "Gen3 x16 (max Gen3)"
     pub pcie_link: Option<String>,
     /// Set when the driver only exposes partial data (e.g. nouveau).
@@ -154,6 +159,9 @@ fn empty_snapshot(name: String, driver: String) -> GpuSnapshot {
         vbios_version: None,
         pci_address: None,
         utilization_pct: None,
+        util_mem_pct: None,
+        util_encoder_pct: None,
+        util_decoder_pct: None,
         mem_used_mb: None,
         mem_total_mb: None,
         mem_reserved_mb: None,
@@ -164,6 +172,7 @@ fn empty_snapshot(name: String, driver: String) -> GpuSnapshot {
         fan_pct: None,
         clock_core_mhz: None,
         clock_mem_mhz: None,
+        clock_video_mhz: None,
         pcie_link: None,
         note: None,
     }
@@ -257,7 +266,7 @@ pub fn processes() -> Vec<GpuProcess> {
         .collect()
 }
 
-const NVIDIA_QUERY: &str = "name,driver_version,vbios_version,pci.bus_id,utilization.gpu,memory.used,memory.total,memory.reserved,temperature.gpu,power.draw,power.limit,fan.speed,clocks.sm,clocks.mem,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current";
+const NVIDIA_QUERY: &str = "name,driver_version,vbios_version,pci.bus_id,utilization.gpu,memory.used,memory.total,memory.reserved,temperature.gpu,power.draw,power.limit,fan.speed,clocks.sm,clocks.mem,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current,utilization.memory,utilization.encoder,utilization.decoder,clocks.video";
 
 fn nvidia_snapshot() -> Vec<GpuSnapshot> {
     let Ok(output) = Command::new("nvidia-smi")
@@ -279,7 +288,7 @@ fn nvidia_snapshot() -> Vec<GpuSnapshot> {
         .lines()
         .filter_map(|line| {
             let fields: Vec<&str> = line.split(',').map(str::trim).collect();
-            if fields.len() < 17 {
+            if fields.len() < 21 {
                 return None;
             }
             let pcie_link = match (
@@ -301,6 +310,9 @@ fn nvidia_snapshot() -> Vec<GpuSnapshot> {
                 vbios_version: Some(fields[2].to_string()),
                 pci_address: Some(fields[3].to_string()),
                 utilization_pct: field(&fields, 4),
+                util_mem_pct: field(&fields, 17),
+                util_encoder_pct: field(&fields, 18),
+                util_decoder_pct: field(&fields, 19),
                 mem_used_mb: field(&fields, 5),
                 mem_total_mb: field(&fields, 6),
                 mem_reserved_mb: field(&fields, 7),
@@ -311,6 +323,7 @@ fn nvidia_snapshot() -> Vec<GpuSnapshot> {
                 fan_pct: field(&fields, 11),
                 clock_core_mhz: field(&fields, 12),
                 clock_mem_mhz: field(&fields, 13),
+                clock_video_mhz: field(&fields, 20),
                 pcie_link,
                 note: None,
             })

@@ -30,6 +30,10 @@ interface MonitorState {
   /** Keyed by GPU index; utilization when available, else temperature. */
   gpuUtil: SeriesMap;
   gpuTemp: SeriesMap;
+  /** VRAM used in MB, plus encoder/decoder busy percent (NVIDIA only). */
+  gpuMemUsed: SeriesMap;
+  gpuEncode: SeriesMap;
+  gpuDecode: SeriesMap;
   sensors: HwmonChip[];
   sensorTimestamps: number[];
   /** Temperature histories keyed `${chip.id}:${temp.label}`. */
@@ -64,6 +68,9 @@ export const useMonitorStore = create<MonitorState>((set) => ({
   gpuTimestamps: [],
   gpuUtil: {},
   gpuTemp: {},
+  gpuMemUsed: {},
+  gpuEncode: {},
+  gpuDecode: {},
   sensors: [],
   sensorTimestamps: [],
   sensorTemps: {},
@@ -87,6 +94,9 @@ export const useMonitorStore = create<MonitorState>((set) => ({
     set((state) => {
       const gpuUtil: SeriesMap = { ...state.gpuUtil };
       const gpuTemp: SeriesMap = { ...state.gpuTemp };
+      const gpuMemUsed: SeriesMap = { ...state.gpuMemUsed };
+      const gpuEncode: SeriesMap = { ...state.gpuEncode };
+      const gpuDecode: SeriesMap = { ...state.gpuDecode };
       gpus.forEach((gpu, i) => {
         const key = String(i);
         if (gpu.utilization_pct !== null) {
@@ -95,12 +105,24 @@ export const useMonitorStore = create<MonitorState>((set) => ({
         if (gpu.temp_c !== null) {
           gpuTemp[key] = push(gpuTemp[key], gpu.temp_c);
         }
+        if (gpu.mem_used_mb !== null) {
+          gpuMemUsed[key] = push(gpuMemUsed[key], gpu.mem_used_mb);
+        }
+        if (gpu.util_encoder_pct !== null) {
+          gpuEncode[key] = push(gpuEncode[key], gpu.util_encoder_pct);
+        }
+        if (gpu.util_decoder_pct !== null) {
+          gpuDecode[key] = push(gpuDecode[key], gpu.util_decoder_pct);
+        }
       });
       return {
         gpus,
         gpuTimestamps: push(state.gpuTimestamps, Date.now() / 1000),
         gpuUtil,
         gpuTemp,
+        gpuMemUsed,
+        gpuEncode,
+        gpuDecode,
       };
     }),
   pushTick: (snapshot) =>
