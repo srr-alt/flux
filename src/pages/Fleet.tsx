@@ -6,10 +6,18 @@ import { HostTile } from "../components/hosts/HostTile";
 import { InstallDebModal } from "../components/hosts/InstallDebModal";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Modal } from "../components/ui/Modal";
 import type { PageId } from "../config/navigation";
 import type { DeployProgress } from "../types/hosts";
 import { formatBytesPerSec, formatKb } from "../lib/format";
-import { deployAgent, listHosts, onDeployProgress, removeHost } from "../lib/tauri";
+import {
+  deployAgent,
+  hostPower,
+  listHosts,
+  onDeployProgress,
+  removeHost,
+  wakeHost,
+} from "../lib/tauri";
 import { emptySeries, useFleetStore, type HostSeries } from "../state/fleetStore";
 import { LOCAL_HOST_ID, useHostsStore } from "../state/hostsStore";
 import { useMonitorStore } from "../state/monitorStore";
@@ -58,6 +66,35 @@ export function Fleet({ onNavigate }: FleetProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [installTarget, setInstallTarget] = useState<{ id: string; name: string } | null>(null);
   const [deploying, setDeploying] = useState<Record<string, string>>({});
+  const [powerTarget, setPowerTarget] = useState<{
+    id: string;
+    name: string;
+    verb: "reboot" | "poweroff";
+  } | null>(null);
+  const [powerBusy, setPowerBusy] = useState(false);
+  const [powerError, setPowerError] = useState<string | null>(null);
+  // Wake feedback: keep "Waking…" up long enough for the machine to boot
+  // and the poller to reconnect.
+  const [waking, setWaking] = useState<Record<string, boolean>>({});
+
+  const wake = (hostId: string) => {
+    setWaking((w) => ({ ...w, [hostId]: true }));
+    wakeHost(hostId).catch(() => {});
+    setTimeout(
+      () => setWaking((w) => ({ ...w, [hostId]: false })),
+      45_000,
+    );
+  };
+
+  const confirmPower = () => {
+    if (!powerTarget) return;
+    setPowerBusy(true);
+    setPowerError(null);
+    hostPower(powerTarget.id, powerTarget.verb)
+      .then(() => setPowerTarget(null))
+      .catch((e) => setPowerError(String(e)))
+      .finally(() => setPowerBusy(false));
+  };
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -179,6 +216,11 @@ export function Fleet({ onNavigate }: FleetProps) {
             series={byHost[host.id] ?? emptySeries()}
             onOpen={() => open(host.id)}
             onShell={() => useTerminalStore.getState().open(host.id)}
+            onWake={host.mac ? () => wake(host.id) : undefined}
+            wakePending={!!waking[host.id]}
+            onPower={(verb) =>
+              setPowerTarget({ id: host.id, name: host.name, verb })
+            }
             busyText={deploying[host.id]}
             onDeployAgent={() => {
               setDeploying((prev) => ({ ...prev, [host.id]: "deploying agent…" }));
@@ -231,6 +273,35 @@ export function Fleet({ onNavigate }: FleetProps) {
           hostName={installTarget.name}
           onClose={() => setInstallTarget(null)}
         />
+      )}
+      {powerTarget && (
+        <Modal
+          onClose={() => setPowerTarget(null)}
+          title={
+            powerTarget.verb === "reboot"
+              ? `Reboot ${powerTarget.name}?`
+              : `Shut down ${powerTarget.name}?`
+          }
+        >
+          <div className="flex w-96 max-w-full flex-col gap-4">
+            <p className="text-sm text-ink-secondary">
+              {powerTarget.verb === "reboot"
+                ? "The machine restarts gracefully via systemctl; monitoring reconnects when it comes back."
+                : "The machine powers off gracefully via systemctl. Waking it again needs Wake-on-LAN or the power button."}
+            </p>
+            {powerError && (
+              <p className="text-xs text-status-critical">{powerError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPowerTarget(null)}>
+                Cancel
+              </Button>
+              <Button variant="danger" loading={powerBusy} onClick={confirmPower}>
+                {powerTarget.verb === "reboot" ? "Reboot" : "Shut down"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
       </div>
     </>

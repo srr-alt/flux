@@ -1,4 +1,4 @@
-import { HardDrive, TerminalSquare, Trash2 } from "lucide-react";
+import { HardDrive, Power, RotateCcw, TerminalSquare, Trash2, Zap } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Sparkline } from "../charts/Sparkline";
 import { Meter } from "../charts/Meter";
@@ -17,6 +17,11 @@ interface HostTileProps {
   onOpen: () => void;
   /** Terminal drop-in — shown when the host can take a shell. */
   onShell?: () => void;
+  /** Wake-on-LAN; shown on offline tiles once a MAC is known. */
+  onWake?: () => void;
+  wakePending?: boolean;
+  /** Graceful reboot/poweroff over SSH (confirm handled by the parent). */
+  onPower?: (verb: "reboot" | "poweroff") => void;
   onRemove?: () => void;
   /** Shown while connected agentless: upgrade to full-detail agent. */
   onDeployAgent?: () => void;
@@ -66,6 +71,9 @@ export function HostTile({
   series,
   onOpen,
   onShell,
+  onWake,
+  wakePending = false,
+  onPower,
   onRemove,
   onDeployAgent,
   onInstallDeb,
@@ -191,6 +199,23 @@ export function HostTile({
           <HardDrive size={11} className="shrink-0 animate-pulse" />
           {busyText}
         </div>
+      ) : offline && onWake ? (
+        // The demo moment: a dark tile you can switch on. Always visible.
+        <div className="flex gap-2">
+          <Button
+            variant="soft"
+            size="sm"
+            disabled={wakePending}
+            onClick={(e) => {
+              e.stopPropagation();
+              onWake();
+            }}
+            title="Send a Wake-on-LAN magic packet"
+          >
+            <Zap size={12} className={wakePending ? "animate-pulse" : ""} />
+            {wakePending ? "Waking…" : "Wake"}
+          </Button>
+        </div>
       ) : (
         (isLocal || status?.state === "connected") && (
           <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
@@ -234,6 +259,35 @@ export function HostTile({
               >
                 Install Flux
               </Button>
+            )}
+            {!isLocal && onPower && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto"
+                  aria-label="Reboot host"
+                  title="Reboot (asks first)"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPower("reboot");
+                  }}
+                >
+                  <RotateCcw size={12} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Shut down host"
+                  title="Shut down (asks first)"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPower("poweroff");
+                  }}
+                >
+                  <Power size={12} />
+                </Button>
+              </>
             )}
           </div>
         )

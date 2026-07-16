@@ -14,6 +14,8 @@ export interface HostView {
   port: number;
   username: string;
   running: boolean;
+  /** Auto-captured on first connect; non-null enables Wake-on-LAN. */
+  mac: string | null;
 }
 
 export interface NewHost {

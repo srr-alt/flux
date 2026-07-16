@@ -3,6 +3,7 @@ pub mod agentless;
 pub mod deploy;
 pub mod hosts;
 pub mod poller;
+pub mod power;
 pub mod session;
 
 use serde::Serialize;

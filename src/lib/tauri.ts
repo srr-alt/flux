@@ -495,6 +495,19 @@ export function forgetHostKey(address: string, port: number): Promise<void> {
   return invoke("forget_host_key", { address, port });
 }
 
+/** Wake-on-LAN magic packet to the host's auto-captured MAC. */
+export function wakeHost(hostId: string): Promise<void> {
+  return invoke("wake_host", { hostId });
+}
+
+/** Graceful power action over SSH. */
+export function hostPower(
+  hostId: string,
+  verb: "reboot" | "poweroff",
+): Promise<void> {
+  return invoke("host_power", { hostId, verb });
+}
+
 export function onDeployProgress(
   callback: (progress: import("../types/hosts").DeployProgress) => void,
 ): Promise<UnlistenFn> {

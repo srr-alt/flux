@@ -25,6 +25,8 @@ pub struct HostView {
     pub port: u16,
     pub username: String,
     pub running: bool,
+    /// MAC known → the Wake button can appear on the offline tile.
+    pub mac: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -132,8 +134,58 @@ pub fn views(state: &AppState) -> Vec<HostView> {
             port: h.port,
             username: h.username.clone(),
             running: runtimes.contains_key(&h.id),
+            mac: h.mac.clone(),
         })
         .collect()
+}
+
+/// Persist an auto-captured MAC (poller thread, first connect).
+pub fn store_host_mac(app: &AppHandle, host_id: &str, mac: &str) {
+    let state = app.state::<AppState>();
+    let mut hosts = state.hosts.lock().unwrap();
+    let Some(host) = hosts.iter_mut().find(|h| h.id == host_id) else {
+        return;
+    };
+    host.mac = Some(mac.to_string());
+    if let Err(err) = hosts::save(&data_dir(app), &hosts) {
+        eprintln!("hosts: cannot save captured MAC: {err}");
+    }
+}
+
+/// Send a Wake-on-LAN magic packet to a host's stored MAC.
+#[tauri::command]
+pub fn wake_host(state: State<'_, AppState>, host_id: HostId) -> Result<(), String> {
+    let mac = state
+        .hosts
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|h| h.id == host_id)
+        .ok_or("unknown host")?
+        .mac
+        .clone()
+        .ok_or("no MAC recorded for this host yet — connect it once first")?;
+    crate::remote::power::wake(&mac)
+}
+
+/// Graceful reboot / poweroff over SSH (verb allowlisted in power.rs).
+#[tauri::command]
+pub async fn host_power(app: AppHandle, host_id: HostId, verb: String) -> Result<(), String> {
+    let config = app
+        .state::<AppState>()
+        .hosts
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|h| h.id == host_id)
+        .cloned()
+        .ok_or("unknown host")?;
+    let known_hosts = known_hosts_path(&app);
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::remote::power::power_action(&config, &known_hosts, &verb)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -247,6 +299,7 @@ pub fn add_host_blocking(
         port: new.port,
         username: new.username,
         key_path,
+        mac: None,
     };
     {
         let mut hosts = state.hosts.lock().unwrap();
@@ -263,6 +316,7 @@ pub fn add_host_blocking(
         port: config.port,
         username: config.username,
         running: true,
+        mac: config.mac,
     })
 }
 

@@ -147,6 +147,8 @@ pub fn run() {
             commands_hosts::deploy_agent,
             commands_hosts::install_flux_deb,
             commands_hosts::forget_host_key,
+            commands_hosts::wake_host,
+            commands_hosts::host_power,
         ])
         .setup(|app| {
             // History recorder: best-effort, app runs fine without it.

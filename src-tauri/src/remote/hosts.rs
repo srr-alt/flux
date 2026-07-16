@@ -14,6 +14,10 @@ pub struct HostConfig {
     pub username: String,
     /// Private key used for auth; the shared app key by default.
     pub key_path: PathBuf,
+    /// Primary interface MAC, auto-captured on first connect; enables
+    /// Wake-on-LAN while the host is offline.
+    #[serde(default)]
+    pub mac: Option<String>,
 }
 
 pub fn hosts_file(data_dir: &Path) -> PathBuf {

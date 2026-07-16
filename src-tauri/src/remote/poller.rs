@@ -39,6 +39,7 @@ pub fn run(
 ) {
     let host_id = config.id.clone();
     let mut backoff_idx = 0usize;
+    let mut mac_captured = false;
 
     'reconnect: loop {
         emit_status(&app, &host_id, HostStatus::Connecting);
@@ -73,6 +74,14 @@ pub fn run(
                     },
                     Some(info),
                 );
+                // First connect: remember the MAC so Wake-on-LAN works once
+                // this host goes dark. Best-effort.
+                if config.mac.is_none() && !mac_captured {
+                    if let Ok(mac) = super::power::capture_mac(&session) {
+                        crate::commands_hosts::store_host_mac(&app, &host_id, &mac);
+                        mac_captured = true;
+                    }
+                }
             }
             Err(err) => {
                 emit_status(&app, &host_id, HostStatus::Error { message: err });
