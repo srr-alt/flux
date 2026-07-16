@@ -21,3 +21,11 @@ Architectures: amd64
 Components: main
 Description: Flux apt repository (Ubuntu 26.04)
 SignWith: AF9AB0861EFBE0F77EE193960D27A9FA345FD3FB
+
+Origin: Flux
+Label: Flux
+Codename: trixie
+Architectures: amd64
+Components: main
+Description: Flux apt repository (Debian 13)
+SignWith: AF9AB0861EFBE0F77EE193960D27A9FA345FD3FB

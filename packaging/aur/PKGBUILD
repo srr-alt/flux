@@ -1,0 +1,27 @@
+# Maintainer: srr-alt <304099140+srr-alt@users.noreply.github.com>
+# Binary package repacking the released .deb (jammy build — oldest glibc
+# floor). Works on Arch, Manjaro, EndeavourOS, CachyOS.
+pkgname=flux-monitor-bin
+_pkgname=Flux
+pkgver=0.2.6
+pkgrel=1
+pkgdesc="Linux system monitor and SSH fleet dashboard (Tauri)"
+arch=('x86_64')
+url="https://github.com/srr-alt/flux"
+license=('MIT')
+provides=('flux-monitor')
+conflicts=('flux-monitor')
+# webkit2gtk-4.1 pulls gtk3/libsoup3; appindicator is dlopened for the tray.
+depends=('webkit2gtk-4.1' 'libayatana-appindicator' 'hicolor-icon-theme')
+options=('!strip')
+source=("${_pkgname}_${pkgver}_amd64.deb::https://github.com/srr-alt/flux/releases/download/v${pkgver}/${_pkgname}_${pkgver}+jammy_amd64.deb"
+        "LICENSE::https://raw.githubusercontent.com/srr-alt/flux/v${pkgver}/LICENSE")
+sha256sums=('SKIP'
+            'SKIP')  # pin real sums after each release: updpkgsums
+
+package() {
+  # makepkg unpacks the .deb (ar) into srcdir; payload is data.tar.*
+  bsdtar -xpf "${srcdir}"/data.tar.* -C "${pkgdir}"
+  install -Dm644 "${srcdir}/LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

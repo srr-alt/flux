@@ -18,7 +18,7 @@ fi
 
 mkdir -p "$PUBLISH_DIR"
 
-for codename in jammy noble resolute; do
+for codename in jammy noble resolute trixie; do
   if ! ls "$DIST_DIR/$codename"/*.deb >/dev/null 2>&1; then
     echo "Skipping $codename: no .deb in $DIST_DIR/$codename (run packaging/build.sh first)"
     continue

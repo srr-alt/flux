@@ -42,9 +42,16 @@ panels, Inter + JetBrains Mono.
   a password of your choosing (off until you set one in Settings →
   Privacy lock). It's a screen-privacy gate, not a security boundary.
 
-## Install (Ubuntu)
+## Install
 
-Supported: 22.04 (jammy), 24.04 (noble), 26.04 (resolute).
+| Distro | Method |
+|---|---|
+| Ubuntu 22.04/24.04/26.04, Mint, Pop!\_OS, Zorin, elementary | apt repo (below) |
+| Debian 13 "trixie", Kali, Parrot | apt repo (below) |
+| Fedora, openSUSE, Rocky/Alma/RHEL 9+ | `.rpm` from [releases](https://github.com/srr-alt/flux/releases) |
+| Arch, Manjaro, EndeavourOS, CachyOS | PKGBUILD in [`packaging/aur/`](packaging/aur/) |
+
+### Debian/Ubuntu family — apt repo
 
 ```bash
 curl -fsSL https://srr-alt.github.io/flux-apt/setup.sh | sudo bash
@@ -64,6 +71,26 @@ sudo apt update && sudo apt install flux
 ```
 
 </details>
+
+### RPM family
+
+Download the `.rpm` from the [releases page](https://github.com/srr-alt/flux/releases), then:
+
+```bash
+sudo dnf install ./Flux-*.rpm      # Fedora / Rocky / Alma / RHEL
+sudo zypper install ./Flux-*.rpm   # openSUSE
+```
+
+Built on EL9, so it runs on anything with glibc ≥ 2.34.
+
+### Arch family
+
+```bash
+git clone https://github.com/srr-alt/flux
+cd flux/packaging/aur && makepkg -si
+```
+
+(AUR upload as `flux-monitor-bin` pending.)
 
 Standalone `.deb`s and the static `flux-agent-linux-amd64` binary are on the
 [releases page](https://github.com/srr-alt/flux/releases).

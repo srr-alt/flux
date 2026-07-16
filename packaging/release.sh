@@ -30,9 +30,10 @@ OLD=$(grep -m1 '"version"' src-tauri/tauri.conf.json | sed -E 's/.*: *"([^"]+)".
 echo "=== bump $OLD -> $VERSION ==="
 sed -i "s/\"version\": \"$OLD\"/\"version\": \"$VERSION\"/" package.json src-tauri/tauri.conf.json
 sed -i -s "0,/^version = \"$OLD\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml crates/flux-core/Cargo.toml crates/flux-agent/Cargo.toml
+sed -i "s/^pkgver=.*/pkgver=$VERSION/" packaging/aur/PKGBUILD
 (cd src-tauri && cargo check -q)   # refresh Cargo.lock
 
-git add package.json src-tauri/tauri.conf.json Cargo.lock \
+git add package.json src-tauri/tauri.conf.json Cargo.lock packaging/aur/PKGBUILD \
   src-tauri/Cargo.toml crates/flux-core/Cargo.toml crates/flux-agent/Cargo.toml
 git commit -m "release: v$VERSION"
 git tag "v$VERSION"
@@ -40,19 +41,25 @@ git tag "v$VERSION"
 echo "=== build .debs ==="
 bash packaging/build.sh
 
+echo "=== build .rpm ==="
+bash packaging/build-rpm.sh
+
 echo "=== refresh apt repo ==="
 bash packaging/apt-repo/build.sh
 
 echo "=== push + GitHub Release ==="
 git push origin main "v$VERSION"
 DEBS=(packaging/dist/*/Flux_"$VERSION"+*_amd64.deb)
+RPMS=(packaging/dist/rpm/*"$VERSION"*.rpm)
 # Jammy-built agent has the oldest glibc floor of the supported set —
 # that's the one shipped as the standalone release asset.
 cp packaging/dist/jammy/flux-agent packaging/dist/flux-agent-linux-amd64
-gh release create "v$VERSION" "${DEBS[@]}" packaging/dist/flux-agent-linux-amd64 \
+gh release create "v$VERSION" "${DEBS[@]}" "${RPMS[@]}" packaging/dist/flux-agent-linux-amd64 \
   -t "Flux v$VERSION" \
-  -n "Flux v$VERSION — .deb packages for Ubuntu 22.04 (jammy), 24.04 (noble), 26.04 (resolute).
-Prefer the apt repo for automatic updates: https://srr-alt.github.io/flux-apt/"
+  -n "Flux v$VERSION
+- .deb: Ubuntu 22.04 (jammy) / 24.04 (noble) / 26.04 (resolute) + derivatives (Mint, Pop!_OS, Zorin, elementary); Debian 13 (trixie) + Kali/Parrot. Prefer the apt repo for automatic updates: https://srr-alt.github.io/flux-apt/
+- .rpm: Fedora, openSUSE, Rocky/Alma/RHEL 9+ (built on EL9 for widest glibc compat)
+- Arch/Manjaro/EndeavourOS/CachyOS: AUR PKGBUILD in packaging/aur/"
 
 if gh repo view srr-alt/flux-apt >/dev/null 2>&1; then
   echo "=== deploy apt repo to GitHub Pages ==="

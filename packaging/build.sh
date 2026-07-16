@@ -20,6 +20,7 @@ TARGETS=(
   "jammy|ubuntu:22.04|libwebkit2gtk-4.1-dev|"
   "noble|ubuntu:24.04|libwebkit2gtk-4.1-dev|"
   "resolute|ubuntu:26.04|libwebkit2gtk-4.1-dev|"
+  "trixie|debian:trixie|libwebkit2gtk-4.1-dev|"
 )
 
 ONLY="${1:-}"

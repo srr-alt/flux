@@ -8,7 +8,7 @@
 set -euo pipefail
 
 REPO_URL="https://srr-alt.github.io/flux-apt"
-SUPPORTED="jammy noble resolute"
+SUPPORTED="jammy noble resolute trixie"
 
 if [[ $(id -u) -ne 0 ]]; then
   echo "This script needs root. Run:" >&2
@@ -16,16 +16,24 @@ if [[ $(id -u) -ne 0 ]]; then
   exit 1
 fi
 
-# Resolve the Ubuntu codename — UBUNTU_CODENAME also covers derivatives
-# (Mint, Pop!_OS) whose own VERSION_CODENAME differs.
+# Resolve the codename — UBUNTU_CODENAME covers Ubuntu derivatives
+# (Mint, Pop!_OS, Zorin, elementary) whose own VERSION_CODENAME differs;
+# Debian and its derivatives use VERSION_CODENAME / DEBIAN_CODENAME.
 . /etc/os-release
 CODENAME="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+
+# Rolling Debian derivatives track trixie-era packages.
+case "$CODENAME" in
+  kali-rolling|lory|parrot) CODENAME=trixie ;;
+esac
 
 case " $SUPPORTED " in
   *" $CODENAME "*) ;;
   *)
     echo "Unsupported release '${CODENAME:-unknown}' — supported: $SUPPORTED" >&2
     echo "(Ubuntu 20.04/focal cannot be supported: Tauri v2 needs webkit2gtk-4.1.)" >&2
+    echo "Fedora/openSUSE/RHEL: use the .rpm from https://github.com/srr-alt/flux/releases" >&2
+    echo "Arch: PKGBUILD in packaging/aur/ (AUR: flux-monitor-bin)" >&2
     exit 1
     ;;
 esac
